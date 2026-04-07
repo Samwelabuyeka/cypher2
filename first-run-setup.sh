@@ -285,6 +285,18 @@ main() {
   start_local_stack
   install_native_ai
 
+  if have_cmd node; then
+    log "Preparing persistent 10-year trade dataset + AI corpus (best effort)."
+    if have_cmd python3; then
+      python3 "$ROOT_DIR/scripts/fetch-trade-data-10y.py" || warn "Trade data fetch failed."
+    else
+      node "$ROOT_DIR/scripts/fetch-trade-data-10y.mjs" || warn "Trade data fetch failed."
+    fi
+    node "$ROOT_DIR/scripts/train-ai-from-market-data.mjs" || warn "AI corpus generation failed."
+  else
+    warn "Node.js not found; skipping market-data and AI corpus preparation."
+  fi
+
   {
     echo "setup_completed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "host_os=$(uname -s)"
