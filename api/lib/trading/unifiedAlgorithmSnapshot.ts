@@ -37,10 +37,11 @@ export interface UnifiedAlgorithmSnapshot {
   projectCoverage: {
     totalAlgorithmExports: number;
     totalLibFilesScanned: number;
+    algorithmNames: string[];
   };
 }
 
-function scanProjectAlgorithms(): { totalAlgorithmExports: number; totalLibFilesScanned: number } {
+function scanProjectAlgorithms(): { totalAlgorithmExports: number; totalLibFilesScanned: number; algorithmNames: string[] } {
   const base = join(process.cwd(), "api", "lib");
   const stack = [base];
   const files: string[] = [];
@@ -55,15 +56,23 @@ function scanProjectAlgorithms(): { totalAlgorithmExports: number; totalLibFiles
   }
 
   let exportCount = 0;
+  const names: string[] = [];
   for (const f of files) {
     const src = readFileSync(f, "utf8");
-    const matches = src.match(/export function\s+\w+/g);
+    const matches = src.match(/export function\s+(\w+)/g);
     exportCount += matches ? matches.length : 0;
+    if (matches) {
+      for (const m of matches) {
+        const name = m.replace("export function", "").trim();
+        names.push(name);
+      }
+    }
   }
 
   return {
     totalAlgorithmExports: exportCount,
     totalLibFilesScanned: files.length,
+    algorithmNames: names.sort(),
   };
 }
 

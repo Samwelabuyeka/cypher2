@@ -71,3 +71,21 @@ Output:
   "samplesEvaluated": 3028
 }
 ```
+
+## Specific Accuracy Test (Requested)
+Command run:
+```bash
+TARGET_DATE=2022-11-10 SYMBOL=BTC/USDT node scripts/evaluate-system-accuracy.mjs
+```
+Output:
+```json
+{
+  "symbol": "BTC/USDT",
+  "targetDate": "2022-11-10",
+  "prediction": "sell",
+  "actualNextDay": "sell",
+  "nextDayReturnPct": -3.0159,
+  "rollingAccuracyPct": 33.26,
+  "samplesEvaluated": 3028
+}
+```
