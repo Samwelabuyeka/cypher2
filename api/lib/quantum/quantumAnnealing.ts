@@ -55,11 +55,11 @@ export function coolingSchedule(
   acceptance_rate?: number
 ): number {
   const t = iteration / max_iterations;
+  const k = 5; // cooling constant
 
   switch (schedule_type) {
     case 'exponential':
       // T = T0 * exp(-kt)
-      const k = 5; // cooling constant
       return initial_temp * Math.exp(-k * t);
 
     case 'linear':

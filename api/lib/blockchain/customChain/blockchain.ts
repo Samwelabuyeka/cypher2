@@ -36,6 +36,11 @@ interface AccountState {
   nonce: number;
 }
 
+interface EthereumFeeSuggestion {
+  maxPriorityFeePerGas: bigint;
+  maxFeePerGas: bigint;
+}
+
 // Merkle proof interface
 export interface MerkleProof {
   siblings: string[];
@@ -202,6 +207,27 @@ export class Blockchain {
     return createHash("sha256").update(data).digest("hex");
   }
 
+  // Ethereum-compatible transaction hashing (go-ethereum style SHA3 family)
+  calculateEthereumCompatibleTxHash(tx: Transaction): string {
+    const payload = `${tx.from}${tx.to}${tx.value}${tx.nonce}${tx.gasPrice}${tx.gasLimit}${tx.data}${tx.timestamp}`;
+    return `0x${createHash("sha3-256").update(payload).digest("hex")}`;
+  }
+
+  // Ethereum address format guard for chain compatibility
+  isValidEthereumAddress(address: string): boolean {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  }
+
+  // EIP-1559 style fee suggestion for our chain
+  suggestEthereumStyleFees(baseFeePerGas: bigint): EthereumFeeSuggestion {
+    const priority = baseFeePerGas / BigInt(10) || BigInt(1);
+    const maxFee = baseFeePerGas * BigInt(2) + priority;
+    return {
+      maxPriorityFeePerGas: priority,
+      maxFeePerGas: maxFee,
+    };
+  }
+
   // Validate a transaction
   validateTransaction(transaction: Transaction): boolean {
     // Skip validation for reward transactions
@@ -210,6 +236,18 @@ export class Blockchain {
     }
 
     // Check if sender has sufficient balance
+    if (
+      !this.isValidEthereumAddress(transaction.from) ||
+      !this.isValidEthereumAddress(transaction.to)
+    ) {
+      return false;
+    }
+
+    const ethHash = this.calculateEthereumCompatibleTxHash(transaction);
+    if (!ethHash.startsWith("0x")) {
+      return false;
+    }
+
     const senderBalance = this.getBalance(transaction.from);
     const totalCost = transaction.value + transaction.gasPrice * transaction.gasLimit;
 

@@ -3,6 +3,42 @@
 ## 🎯 Your Goal
 Get your CypherCoin blockchain running on actual nodes (not just Gadget) so people can access it.
 
+
+## ✅ Option 0 (Recommended): One-Command Fresh Clone Install
+
+**Perfect for:** Fresh machines where you want everything installed once, end-to-end
+
+### Run This First
+```bash
+chmod +x first-run-setup.sh
+./first-run-setup.sh
+```
+
+### What this script does
+- ✅ Best-effort Docker + Docker Compose auto-install on Linux/macOS
+- ✅ Imports upstream sources in one pass:
+  - `Freqtrade`
+  - `Hummingbot`
+  - `go-ethereum`
+- ✅ Creates stripped local-use copies (without `.git` history and dev/test heavy folders) in `upstream-sources-stripped/` so they can be used alongside this repo
+- ✅ Starts the local persistent cloud stack (`standalone-node/docker-compose.yml`)
+- ✅ Optional native local AI install (Ollama) with model selection prompt
+- ✅ Writes setup marker: `.cypher/setup.done`
+
+To enable local AI bias in autonomous trading after install:
+```bash
+export CYPHER_ENABLE_LOCAL_AI=1
+export OLLAMA_MODEL=llama3.2:3b
+export OLLAMA_HOST=http://127.0.0.1:11434
+```
+
+### Verify Setup Marker
+```bash
+cat .cypher/setup.done
+```
+
+---
+
 ## ⚡ Option 1: Local Test Network (5 minutes)
 
 **Perfect for:** Testing, development, seeing it work immediately
