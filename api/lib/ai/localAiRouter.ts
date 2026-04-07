@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
+
 export interface LocalAIMarketInput {
   symbol: string;
   price: number;
@@ -141,5 +144,3 @@ export async function getLocalAIMarketBias(
     );
   }
 }
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
