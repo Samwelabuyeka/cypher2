@@ -51,3 +51,23 @@ node -e "const {runHeavyPortfolioSimulation}=require('/tmp/cypher-sim/backtestin
 ## Notes
 - This verifies broad algorithm-family connectivity and AI synchronization under heavy synthetic load.
 - Still synthetic: production confidence requires historical replay + walk-forward + forward paper trading.
+
+## Date-based Accuracy Check (10-year trained model)
+Command run:
+```bash
+python3 scripts/manual-train-ai.py
+node scripts/evaluate-system-accuracy.mjs
+```
+
+Output:
+```json
+{
+  "symbol": "BTC/USDT",
+  "targetDate": "2024-01-15",
+  "prediction": "hold",
+  "actualNextDay": "buy",
+  "nextDayReturnPct": 1.4746,
+  "rollingAccuracyPct": 33.26,
+  "samplesEvaluated": 3028
+}
+```

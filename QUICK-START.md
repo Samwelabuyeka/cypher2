@@ -49,6 +49,7 @@ Manual refresh commands (without reinstalling):
 python3 scripts/fetch-trade-data-10y.py
 node scripts/train-ai-from-market-data.mjs
 python3 scripts/manual-train-ai.py
+node scripts/evaluate-system-accuracy.mjs
 ```
 
 ### Verify Setup Marker
