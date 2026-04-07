@@ -1,4 +1,6 @@
 import { ActionOptions } from "gadget-server";
+import { getLocalAIMarketBias } from "../lib/ai/localAiRouter";
+import { buildUnifiedAlgorithmSnapshot } from "../lib/trading/unifiedAlgorithmSnapshot";
 
 interface TradingSignal {
   action: 'buy' | 'sell' | 'hold';
@@ -64,6 +66,26 @@ async function analyzeMarketWithAI(
     const avgVolume = marketData.slice(-20).reduce((sum, d) => sum + d.volume, 0) / 20;
     const currentVolume = marketData[marketData.length - 1].volume;
     
+    const unified = buildUnifiedAlgorithmSnapshot(
+      symbol,
+      marketData.map((d) => ({
+        close: d.close,
+        high: d.high,
+        low: d.low,
+        volume: d.volume,
+        timestamp: d.timestamp,
+      }))
+    );
+    const ftSignal = {
+      action: unified.upstream.freqtradeAction,
+      confidence: 70,
+      reason: "unified_snapshot_freqtrade",
+    };
+    const hbQuote = {
+      bidSpread: unified.upstream.hbBidSpread,
+      askSpread: unified.upstream.hbAskSpread,
+    };
+
     // Generate trading signal based on technical analysis
     let action: 'buy' | 'sell' | 'hold' = 'hold';
     let confidence = 50;
@@ -94,6 +116,43 @@ async function analyzeMarketWithAI(
       reason = 'Bearish trend: SMA20 < SMA50, negative momentum';
     }
     
+    // Blend in upstream strategy signal with bounded influence
+    if (ftSignal.action !== "hold" && ftSignal.action === action) {
+      confidence += 10;
+      reason += ` | aligned:${ftSignal.reason}`;
+    } else if (ftSignal.action !== "hold" && action === "hold") {
+      action = ftSignal.action;
+      confidence = Math.max(confidence, ftSignal.confidence * 0.85);
+      reason = `Upstream activation:${ftSignal.reason}`;
+    }
+
+    // Optional local AI model (Ollama) overlay.
+    const aiBias = await getLocalAIMarketBias({
+      symbol,
+      price: currentPrice,
+      rsi,
+      sma20,
+      sma50,
+      volumeRatio: currentVolume / Math.max(1, avgVolume),
+      freqtradeAction: ftSignal.action,
+      algorithmSnapshot: {
+        strategyVotes: unified.strategyVotes,
+        indicators: unified.indicators,
+        upstream: unified.upstream,
+        quantum: unified.quantum,
+        projectCoverage: unified.projectCoverage,
+      },
+    });
+
+    if (aiBias.action === action && aiBias.action !== "hold") {
+      confidence += aiBias.confidence * 0.15;
+      reason += ` | local_ai_align:${aiBias.reason}`;
+    } else if (action === "hold" && aiBias.action !== "hold") {
+      action = aiBias.action;
+      confidence = Math.max(confidence, aiBias.confidence * 0.8);
+      reason = `Local AI activation:${aiBias.reason}`;
+    }
+
     // Risk adjustment based on bot's risk level
     const riskMultiplier = botConfig.riskLevel === 'conservative' ? 0.7 : 
                           botConfig.riskLevel === 'aggressive' ? 1.3 : 1.0;
@@ -109,7 +168,7 @@ async function analyzeMarketWithAI(
       confidence: adjustedConfidence,
       price: currentPrice,
       quantity,
-      reason
+      reason: `${reason} | hb_bid_spread=${hbQuote.bidSpread.toFixed(6)} hb_ask_spread=${hbQuote.askSpread.toFixed(6)} q_var95=${unified.quantum.var95.toFixed(4)} q_sharpe=${unified.quantum.optimizedSharpe.toFixed(3)} ai=${aiBias.action}:${aiBias.confidence.toFixed(1)}`
     };
   } catch (error) {
     logger.error({ error, symbol }, 'Error analyzing market data');
