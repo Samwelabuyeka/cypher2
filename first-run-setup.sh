@@ -293,6 +293,9 @@ main() {
       node "$ROOT_DIR/scripts/fetch-trade-data-10y.mjs" || warn "Trade data fetch failed."
     fi
     node "$ROOT_DIR/scripts/train-ai-from-market-data.mjs" || warn "AI corpus generation failed."
+    if have_cmd python3; then
+      python3 "$ROOT_DIR/scripts/manual-train-ai.py" || warn "Manual AI model training failed."
+    fi
   else
     warn "Node.js not found; skipping market-data and AI corpus preparation."
   fi
