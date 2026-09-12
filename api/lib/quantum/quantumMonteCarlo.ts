@@ -87,7 +87,8 @@ export function quantumMonteCarloVaR(
     // Calculate portfolio return for this scenario
     let scenarioReturn = 0;
     portfolio.positions.forEach((pos, idx) => {
-      const positionReturn = quantumSamples[idx] * Math.sqrt(0.01); // Assume 1% daily volatility
+      const positionVolatility = 0.20;
+      const positionReturn = quantumSamples[idx] * Math.sqrt(positionVolatility / 252);
       scenarioReturn += (pos.quantity * pos.currentPrice * positionReturn) / portfolioValue;
     });
     
@@ -97,7 +98,8 @@ export function quantumMonteCarloVaR(
   // Sort returns for VaR calculation
   returns.sort((a, b) => a - b);
   
-  const varIndex = Math.floor((1 - confidenceLevel) * simulations);
+  const normalizedConfidence = confidenceLevel > 1 ? confidenceLevel / 100 : confidenceLevel;
+  const varIndex = Math.floor((1 - normalizedConfidence) * simulations);
   const valueAtRisk = -returns[varIndex];
   
   // Calculate Expected Shortfall (CVaR)
@@ -273,31 +275,17 @@ export function quantumAmplitudeEstimation(
 ): number {
   const numIterations = Math.ceil(Math.PI / (4 * precision));
   let goodStates = 0;
-  let totalStates = 0;
   
-  // Grover operator applications
   for (let iter = 0; iter < numIterations; iter++) {
-    // Sample from domain
     const x = domain[0] + Math.random() * (domain[1] - domain[0]);
     const value = targetFunction(x);
     
-    // Mark "good" states
     if (value > 0.5) {
       goodStates++;
     }
-    totalStates++;
-    
-    // Apply quantum amplitude amplification
-    const theta = Math.asin(Math.sqrt(goodStates / totalStates));
-    const amplifiedProbability = Math.sin((2 * iter + 1) * theta) ** 2;
-    
-    // Update estimate
-    if (Math.random() < amplifiedProbability) {
-      goodStates += 0.5; // Boost good states
-    }
   }
   
-  return goodStates / totalStates;
+  return goodStates / numIterations;
 }
 
 /**
@@ -320,7 +308,7 @@ export function quantumRejectionSampling(
     const targetValue = targetDistribution(x);
     
     // Quantum acceptance probability with tunneling
-    const classicalRatio = targetValue / (maxRatio * proposalValue);
+    const classicalRatio = targetValue / (maxRatio * Math.max(proposalValue, 1e-10));
     const quantumTunneling = Math.exp(-Math.abs(1 - classicalRatio));
     const acceptanceProbability = Math.min(1, classicalRatio + 0.1 * quantumTunneling);
     
@@ -401,7 +389,7 @@ export function calculateQuantumForce(
   const dimension = walkerPosition.length;
   const force: number[] = [];
   
-  const psiCenter = waveFunction.evaluate(walkerPosition);
+  const psiCenter = Math.max(waveFunction.evaluate(walkerPosition), 1e-10);
   
   // Use gradient if available, otherwise finite differences
   if (waveFunction.gradient) {
@@ -602,7 +590,7 @@ function normCDF(x: number): number {
 }
 
 function calculateReferenceEnergy(walkers: Walker[]): number {
-  const energies = walkers.map(w => w.energy || 0).filter(e => e !== 0);
+  const energies = walkers.map(w => w.energy || 0);
   if (energies.length === 0) return 0;
   
   return energies.reduce((sum, e) => sum + e, 0) / energies.length;

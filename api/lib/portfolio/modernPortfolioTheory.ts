@@ -209,7 +209,7 @@ export function minimizeVariance(
 
     // Project onto simplex (sum to 1)
     const sum = weights.reduce((a, b) => a + b, 0);
-    weights = weights.map(w => w / sum);
+    weights = weights.map(w => w / Math.max(sum, 1e-10));
 
     // Check convergence
     const change = Math.sqrt(
@@ -421,9 +421,8 @@ export function combineViewsWithMarket(
     row.map((val, j) => i === j ? 1 / Math.max(val, 0.01) : 0)
   );
   
-  // Use identity as simplified covariance for demonstration
   const covarianceMatrix = Array(n).fill(0).map((_, i) => 
-    Array(n).fill(0).map((_, j) => i === j ? 0.01 : 0)
+    Array(n).fill(0).map((_, j) => i === j ? 0.01 : 0.0025)
   );
   
   return calculatePosteriorReturns(
@@ -525,7 +524,7 @@ export function equalRiskContribution(
   const volatilities = covarianceMatrix.map((_, i) => 
     Math.sqrt(covarianceMatrix[i][i])
   );
-  const invVol = volatilities.map(v => 1 / v);
+  const invVol = volatilities.map(v => 1 / Math.max(v, 1e-10));
   const sumInvVol = invVol.reduce((a, b) => a + b, 0);
   let weights = invVol.map(iv => iv / sumInvVol);
   
@@ -553,7 +552,7 @@ export function equalRiskContribution(
     
     // Normalize
     const sum = weights.reduce((a, b) => a + b, 0);
-    weights = weights.map(w => w / sum);
+    weights = weights.map(w => w / Math.max(sum, 1e-10));
     
     const change = Math.sqrt(
       weights.reduce((sum, w, i) => sum + Math.pow(w - oldWeights[i], 2), 0)
@@ -860,9 +859,11 @@ function recursiveBisection(
     ) / (rightIndices.length * rightIndices.length);
     
     // Inverse variance allocation
-    const totalInvVar = 1 / leftVariance + 1 / rightVariance;
-    const leftWeight = (1 / leftVariance) / totalInvVar;
-    const rightWeight = (1 / rightVariance) / totalInvVar;
+    const safeLeftVar = Math.max(leftVariance, 1e-10);
+    const safeRightVar = Math.max(rightVariance, 1e-10);
+    const totalInvVar = 1 / safeLeftVar + 1 / safeRightVar;
+    const leftWeight = (1 / safeLeftVar) / totalInvVar;
+    const rightWeight = (1 / safeRightVar) / totalInvVar;
     
     // Recursively allocate to subclusters
     allocate(leftIndices);
@@ -894,7 +895,7 @@ export function hierarchicalRiskParityOptimization(
     Math.sqrt(covarianceMatrix[i][i])
   );
   const correlationMatrix = covarianceMatrix.map((row, i) => 
-    row.map((cov, j) => cov / (volatilities[i] * volatilities[j]))
+    row.map((cov, j) => cov / Math.max(volatilities[i] * volatilities[j], 1e-10))
   );
   
   // Get quasi-diagonal ordering

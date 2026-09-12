@@ -109,7 +109,7 @@ function covariance(arr1: number[], arr2: number[]): number {
     cov += (arr1[i] - mean1) * (arr2[i] - mean2);
   }
   
-  return cov / (n - 1);
+  return cov / Math.max(1, n - 1);
 }
 
 /**
@@ -142,7 +142,7 @@ function choleskyDecomposition(matrix: number[][]): number[][] {
         for (let k = 0; k < j; k++) {
           sum += L[i][k] * L[j][k];
         }
-        L[i][j] = (matrix[i][j] - sum) / L[j][j];
+        L[i][j] = (matrix[i][j] - sum) / Math.max(L[j][j], 1e-10);
       }
     }
   }
@@ -274,7 +274,7 @@ function calculateMarginalVaR(
     for (let j = 0; j < weights.length; j++) {
       contribution += weights[j] * covarianceMatrix[i][j];
     }
-    marginalVaRs.push(contribution / portfolioStdDev);
+    marginalVaRs.push(contribution / Math.max(portfolioStdDev, 1e-10));
   }
   
   return marginalVaRs;
@@ -405,7 +405,7 @@ function controlVariates(
   simulations: number[],
   controlVariable: number[]
 ): number[] {
-  const beta = covariance(simulations, controlVariable) / (standardDeviation(controlVariable) ** 2);
+  const beta = covariance(simulations, controlVariable) / Math.max(standardDeviation(controlVariable) ** 2, 1e-10);
   const expectedControl = mean(controlVariable);
   
   return simulations.map((sim, i) => sim - beta * (controlVariable[i] - expectedControl));
@@ -760,7 +760,7 @@ export function portfolioRiskDecomposition(
   const componentVaRs = weights.map((w, i) => w * marginalVaRs[i] * portfolioValue);
   
   const totalComponentVaR = componentVaRs.reduce((sum, cv) => sum + cv, 0);
-  const percentageContributions = componentVaRs.map(cv => (cv / totalComponentVaR) * 100);
+  const percentageContributions = componentVaRs.map(cv => (cv / Math.max(Math.abs(totalComponentVaR), 1e-10)) * 100);
   
   return {
     totalRisk: stdDev * portfolioValue,

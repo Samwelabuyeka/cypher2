@@ -105,7 +105,10 @@ export function calculatePositionRisk(
   quantity: number,
   stopLoss?: number
 ): PositionRiskResult {
-  const unrealizedPnL = (currentPrice - entryPrice) * quantity;
+  const isShort = quantity < 0;
+  const unrealizedPnL = isShort
+    ? (entryPrice - currentPrice) * Math.abs(quantity)
+    : (currentPrice - entryPrice) * quantity;
   const percentageChange = ((currentPrice - entryPrice) / entryPrice) * 100;
 
   let riskAmount: number | null = null;
@@ -372,7 +375,7 @@ export function calculateSharpeRatio(
   const variance = returns.reduce((sum, ret) => {
     const diff = ret - avgReturn;
     return sum + diff * diff;
-  }, 0) / returns.length;
+  }, 0) / Math.max(1, returns.length - 1);
   
   const stdDev = Math.sqrt(variance);
   
@@ -475,12 +478,8 @@ export function calculateRiskScore(params: {
     factors++;
   }
 
-  // Return normalized score
-  if (factors === 0) {
-    return 0;
-  }
-
-  return Math.min((score / factors) * (100 / 25), 100);
+  const maxFactors = 4;
+  return Math.min((score / maxFactors) * (100 / 25), 100);
 }
 
 interface MultiLayerRiskResult {

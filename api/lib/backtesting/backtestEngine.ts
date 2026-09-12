@@ -234,7 +234,7 @@ function standardDeviation(values: number[]): number {
   if (values.length === 0) return 0;
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
-  const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+  const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / Math.max(1, values.length - 1);
   return Math.sqrt(variance);
 }
 
@@ -351,13 +351,14 @@ export function performanceMetrics(
   const returns = calculateReturns(equityCurve);
   const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
   const stdDev = standardDeviation(returns);
-  const downsideDev = downsideDeviation(returns, 0);
+  const downsideDev = downsideDeviation(returns, riskFreeRate / 252);
 
   // Annualized metrics (assuming daily data)
   const annualFactor = Math.sqrt(252);
   const sharpeRatio = stdDev === 0 ? 0 : ((avgReturn - riskFreeRate / 252) / stdDev) * annualFactor;
   const sortinoRatio = downsideDev === 0 ? 0 : ((avgReturn - riskFreeRate / 252) / downsideDev) * annualFactor;
-  const calmarRatio = maxDrawdownPercent === 0 ? 0 : (totalReturnPercent / 100) / (maxDrawdownPercent / 100);
+  const annualizedReturn = totalReturnPercent * (252 / Math.max(1, equityCurve.length));
+  const calmarRatio = maxDrawdownPercent === 0 ? 0 : annualizedReturn / maxDrawdownPercent;
 
   // Calculate average trade duration
   const tradeDurations = trades.map(t => t.exitTime.getTime() - t.entryTime.getTime());
@@ -439,101 +440,161 @@ export class BacktestEngine {
       quantity: number;
       side: 'long' | 'short';
       symbol: string;
+      entryCommission: number;
       stopLoss?: number;
       takeProfit?: number;
     } | null = null;
 
-    // Track equity at each time point
-    const dataByTime = new Map<number, MarketData>();
-    for (const candle of data) {
-      dataByTime.set(candle.timestamp.getTime(), candle);
+    const signalByTime = new Map<number, Signal>();
+    for (const signal of signals) {
+      signalByTime.set(signal.timestamp.getTime(), signal);
     }
 
-    for (const signal of signals) {
-      const currentPrice = signal.price;
-      
-      // Apply slippage
-      const executionPrice = signal.type === 'buy' 
-        ? currentPrice * (1 + this.config.slippage)
-        : currentPrice * (1 - this.config.slippage);
+    for (const candle of data) {
+      const signal = signalByTime.get(candle.timestamp.getTime());
+      if (signal) {
+        const currentPrice = signal.price;
+        const isBuySide = signal.type === 'buy' || (signal.type === 'close' && openPosition?.side === 'short');
+        const executionPrice = isBuySide
+          ? currentPrice * (1 + this.config.slippage)
+          : currentPrice * (1 - this.config.slippage);
 
-      if (signal.type === 'buy' && !openPosition) {
-        // Open long position
-        const quantity = signal.quantity || (currentCapital * this.config.leverage!) / executionPrice;
-        const commission = quantity * executionPrice * this.config.commission;
-        
-        openPosition = {
-          entryTime: signal.timestamp,
-          entryPrice: executionPrice,
-          quantity,
-          side: 'long',
-          symbol: signal.symbol,
-          stopLoss: signal.stopLoss,
-          takeProfit: signal.takeProfit,
-        };
-        
-        currentCapital -= commission;
-      } else if (signal.type === 'sell' && !openPosition) {
-        // Open short position
-        const quantity = signal.quantity || (currentCapital * this.config.leverage!) / executionPrice;
-        const commission = quantity * executionPrice * this.config.commission;
-        
-        openPosition = {
-          entryTime: signal.timestamp,
-          entryPrice: executionPrice,
-          quantity,
-          side: 'short',
-          symbol: signal.symbol,
-          stopLoss: signal.stopLoss,
-          takeProfit: signal.takeProfit,
-        };
-        
-        currentCapital -= commission;
-      } else if (signal.type === 'close' && openPosition) {
-        // Close position
-        const exitPrice = executionPrice;
-        const commission = openPosition.quantity * exitPrice * this.config.commission;
-        
-        let pnl: number;
-        if (openPosition.side === 'long') {
-          pnl = (exitPrice - openPosition.entryPrice) * openPosition.quantity;
-        } else {
-          pnl = (openPosition.entryPrice - exitPrice) * openPosition.quantity;
-        }
-        
-        pnl -= commission;
-        currentCapital += pnl;
-        
-        const trade: Trade = {
-          entryTime: openPosition.entryTime,
-          exitTime: signal.timestamp,
-          symbol: openPosition.symbol,
-          side: openPosition.side,
-          entryPrice: openPosition.entryPrice,
-          exitPrice,
-          quantity: openPosition.quantity,
-          pnl,
-          pnlPercent: (pnl / (openPosition.entryPrice * openPosition.quantity)) * 100,
-          commission: commission * 2, // entry + exit
-          slippage: Math.abs(currentPrice - executionPrice) * openPosition.quantity,
-        };
-        
-        trades.push(trade);
-        openPosition = null;
+        if (signal.type === 'buy' && !openPosition) {
+          const quantity = signal.quantity || (currentCapital * this.config.leverage!) / executionPrice;
+          const entryCommission = quantity * executionPrice * this.config.commission;
 
-        // Update compounding
-        if (!this.config.compounding) {
-          currentCapital = this.config.initialCapital + trades.reduce((sum, t) => sum + t.pnl, 0);
+          openPosition = {
+            entryTime: signal.timestamp,
+            entryPrice: executionPrice,
+            quantity,
+            side: 'long',
+            symbol: signal.symbol,
+            entryCommission,
+            stopLoss: signal.stopLoss,
+            takeProfit: signal.takeProfit,
+          };
+
+          currentCapital -= entryCommission;
+        } else if (signal.type === 'sell' && !openPosition) {
+          const quantity = signal.quantity || (currentCapital * this.config.leverage!) / executionPrice;
+          const entryCommission = quantity * executionPrice * this.config.commission;
+
+          openPosition = {
+            entryTime: signal.timestamp,
+            entryPrice: executionPrice,
+            quantity,
+            side: 'short',
+            symbol: signal.symbol,
+            entryCommission,
+            stopLoss: signal.stopLoss,
+            takeProfit: signal.takeProfit,
+          };
+
+          currentCapital -= entryCommission;
+        } else if (signal.type === 'close' && openPosition) {
+          const exitPrice = executionPrice;
+          const exitCommission = openPosition.quantity * exitPrice * this.config.commission;
+          const entryCommission = openPosition.entryCommission;
+
+          let pnl: number;
+          if (openPosition.side === 'long') {
+            pnl = (exitPrice - openPosition.entryPrice) * openPosition.quantity;
+          } else {
+            pnl = (openPosition.entryPrice - exitPrice) * openPosition.quantity;
+          }
+
+          pnl -= exitCommission;
+          currentCapital += pnl;
+
+          trades.push({
+            entryTime: openPosition.entryTime,
+            exitTime: signal.timestamp,
+            symbol: openPosition.symbol,
+            side: openPosition.side,
+            entryPrice: openPosition.entryPrice,
+            exitPrice,
+            quantity: openPosition.quantity,
+            pnl,
+            pnlPercent: (pnl / (openPosition.entryPrice * openPosition.quantity)) * 100,
+            commission: entryCommission + exitCommission,
+            slippage: Math.abs(currentPrice - executionPrice) * openPosition.quantity,
+          });
+
+          openPosition = null;
+
+          if (!this.config.compounding) {
+            const totalEntryCommissions = trades.reduce((sum, t) => sum + t.commission, 0);
+            currentCapital = this.config.initialCapital + trades.reduce((sum, t) => sum + t.pnl, 0) - totalEntryCommissions;
+          }
         }
       }
 
-      // Update equity curve
+      if (openPosition) {
+        const currentPrice = candle.close;
+        let shouldClose = false;
+        let closePrice = currentPrice;
+
+        if (openPosition.stopLoss && openPosition.side === 'long' && candle.low <= openPosition.stopLoss) {
+          shouldClose = true;
+          closePrice = openPosition.stopLoss;
+        } else if (openPosition.stopLoss && openPosition.side === 'short' && candle.high >= openPosition.stopLoss) {
+          shouldClose = true;
+          closePrice = openPosition.stopLoss;
+        } else if (openPosition.takeProfit && openPosition.side === 'long' && candle.high >= openPosition.takeProfit) {
+          shouldClose = true;
+          closePrice = openPosition.takeProfit;
+        } else if (openPosition.takeProfit && openPosition.side === 'short' && candle.low <= openPosition.takeProfit) {
+          shouldClose = true;
+          closePrice = openPosition.takeProfit;
+        }
+
+        if (shouldClose) {
+          const isBuySide = openPosition.side === 'short';
+          const executionPrice = isBuySide
+            ? closePrice * (1 + this.config.slippage)
+            : closePrice * (1 - this.config.slippage);
+          const exitCommission = openPosition.quantity * executionPrice * this.config.commission;
+          const entryCommission = openPosition.entryCommission;
+
+          let pnl: number;
+          if (openPosition.side === 'long') {
+            pnl = (executionPrice - openPosition.entryPrice) * openPosition.quantity;
+          } else {
+            pnl = (openPosition.entryPrice - executionPrice) * openPosition.quantity;
+          }
+
+          pnl -= exitCommission;
+          currentCapital += pnl;
+
+          trades.push({
+            entryTime: openPosition.entryTime,
+            exitTime: candle.timestamp,
+            symbol: openPosition.symbol,
+            side: openPosition.side,
+            entryPrice: openPosition.entryPrice,
+            exitPrice: executionPrice,
+            quantity: openPosition.quantity,
+            pnl,
+            pnlPercent: (pnl / (openPosition.entryPrice * openPosition.quantity)) * 100,
+            commission: entryCommission + exitCommission,
+            slippage: Math.abs(closePrice - executionPrice) * openPosition.quantity,
+          });
+
+          openPosition = null;
+
+          if (!this.config.compounding) {
+            const totalEntryCommissions = trades.reduce((sum, t) => sum + t.commission, 0);
+            currentCapital = this.config.initialCapital + trades.reduce((sum, t) => sum + t.pnl, 0) - totalEntryCommissions;
+          }
+        }
+      }
+
       peak = Math.max(peak, currentCapital);
       const drawdown = peak - currentCapital;
       const drawdownPercent = peak > 0 ? (drawdown / peak) * 100 : 0;
 
       equityCurve.push({
-        timestamp: signal.timestamp,
+        timestamp: candle.timestamp,
         equity: currentCapital,
         drawdown,
         drawdownPercent,
@@ -544,7 +605,8 @@ export class BacktestEngine {
     if (openPosition && data.length > 0) {
       const lastCandle = data[data.length - 1];
       const exitPrice = lastCandle.close * (openPosition.side === 'long' ? (1 - this.config.slippage) : (1 + this.config.slippage));
-      const commission = openPosition.quantity * exitPrice * this.config.commission;
+      const exitCommission = openPosition.quantity * exitPrice * this.config.commission;
+      const entryCommission = openPosition.entryCommission;
       
       let pnl: number;
       if (openPosition.side === 'long') {
@@ -553,7 +615,7 @@ export class BacktestEngine {
         pnl = (openPosition.entryPrice - exitPrice) * openPosition.quantity;
       }
       
-      pnl -= commission;
+      pnl -= exitCommission;
       currentCapital += pnl;
       
       trades.push({
@@ -566,7 +628,7 @@ export class BacktestEngine {
         quantity: openPosition.quantity,
         pnl,
         pnlPercent: (pnl / (openPosition.entryPrice * openPosition.quantity)) * 100,
-        commission: commission * 2,
+        commission: entryCommission + exitCommission,
         slippage: Math.abs(lastCandle.close - exitPrice) * openPosition.quantity,
       });
     }
@@ -652,7 +714,7 @@ export class WalkForwardAnalyzer {
         slippage: 0.0005,
       });
 
-      const inSampleResult = await backtest.run(strategy, optimizationData);
+      const inSampleResult = await backtest.run(optimizedStrategy, optimizationData);
       const outOfSampleResult = await backtest.run(optimizedStrategy, testData);
 
       // Calculate degradation
@@ -913,7 +975,8 @@ export class MonteCarloSimulator {
       const returns = calculateReturns(equityCurve);
       const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
       const stdDev = standardDeviation(returns);
-      const sharpeRatio = stdDev === 0 ? 0 : (avgReturn / stdDev) * Math.sqrt(252);
+      const riskFreePerTrade = 0.02 / 365;
+      const sharpeRatio = stdDev === 0 ? 0 : ((avgReturn - riskFreePerTrade) / stdDev) * Math.sqrt(365);
 
       scenarios.push({
         scenarioNumber: i + 1,

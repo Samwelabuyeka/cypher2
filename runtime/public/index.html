@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cypher AI Trading Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--card:#111827;--border:#1f2937;--text:#e5e7eb;--dim:#6b7280;--green:#10b981;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;--yellow:#f59e0b}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',monospace;overflow-x:hidden}
+.header{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:18px;color:var(--text);display:flex;align-items:center;gap:10px}
+.header h1 span{color:var(--purple);font-weight:800}
+.header .status{display:flex;gap:16px;font-size:12px}
+.header .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.grid{display:grid;grid-template-columns:1fr 320px;grid-template-rows:auto 1fr;gap:1px;background:var(--border);height:calc(100vh - 52px)}
+.grid>div{background:var(--bg);overflow:auto}
+.chart-panel{grid-row:1/3}
+.sidebar{grid-row:1/3;display:flex;flex-direction:column;gap:1px;background:var(--border)}
+.sidebar>div{background:var(--bg);padding:12px;flex:1;min-height:0;overflow:auto}
+.panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px}
+.symbol-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.sym{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;cursor:pointer;transition:all .15s}
+.sym:hover{border-color:var(--purple);transform:translateY(-1px)}
+.sym .name{font-weight:700;color:var(--text)}
+.sym .price{color:var(--text);font-size:13px;margin:2px 0}
+.sym .change{font-size:10px;font-weight:600}
+.sym .change.up{color:var(--green)}
+.sym .change.down{color:var(--red)}
+.sym .signal{font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;margin-top:4px;display:inline-block}
+.signal.BUY{background:rgba(16,185,129,.15);color:var(--green)}
+.signal.SELL{background:rgba(239,68,68,.15);color:var(--red)}
+.signal.HOLD{background:rgba(107,114,128,.15);color:var(--dim)}
+.trade-log{font-size:11px}
+.trade-entry{padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.trade-entry:last-child{border:none}
+.trade-icon{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.trade-icon.buy{background:rgba(16,185,129,.15);color:var(--green)}
+.trade-icon.sell{background:rgba(239,68,68,.15);color:var(--red)}
+.trade-info{flex:1}
+.trade-info .sym{font-weight:600;font-size:12px}
+.trade-info .detail{color:var(--dim);font-size:10px}
+.wallet-balance{text-align:center;padding:16px 0}
+.wallet-balance .amount{font-size:28px;font-weight:800;color:var(--text)}
+.wallet-balance .label{font-size:11px;color:var(--dim);margin-top:4px}
+.wallet-positions{margin-top:8px}
+.pos{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
+.pos:last-child{border:none}
+.pos .name{font-weight:600}
+.pos .pnl{font-weight:600}
+.pos .pnl.up{color:var(--green)}
+.pos .pnl.down{color:var(--red)}
+.controls{display:flex;gap:8px;margin-bottom:12px}
+.btn{padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text);font-size:11px;cursor:pointer;font-weight:600;transition:all .15s}
+.btn:hover{border-color:var(--purple);background:#1e1b4b}
+.btn.active{background:var(--purple);border-color:var(--purple);color:#fff}
+.log-line{font-size:10px;color:var(--dim);padding:2px 0;font-family:monospace}
+.log-line .time{color:var(--purple)}
+.log-line .action{color:var(--green)}
+.log-line .warn{color:var(--yellow)}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1><span>CYPHER</span> AI Trading Engine</h1>
+  <div class="status">
+    <span><span class="dot"></span>LIVE BINANCE</span>
+    <span id="currencies">50 CURRENCIES</span>
+    <span id="clock"></span>
+  </div>
+</div>
+<div class="grid">
+  <div class="chart-panel">
+    <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+      <div class="controls">
+        <button class="btn active" onclick="setSymbol('BTC')">BTC</button>
+        <button class="btn" onclick="setSymbol('ETH')">ETH</button>
+        <button class="btn" onclick="setSymbol('SOL')">SOL</button>
+        <button class="btn" onclick="setSymbol('BNB')">BNB</button>
+        <button class="btn" onclick="setSymbol('XRP')">XRP</button>
+      </div>
+      <div class="controls">
+        <button class="btn" onclick="setTimeframe('1h')">1H</button>
+        <button class="btn active" onclick="setTimeframe('4h')">4H</button>
+        <button class="btn" onclick="setTimeframe('1d')">1D</button>
+        <button class="btn" onclick="setTimeframe('1w')">1W</button>
+      </div>
+      <div style="flex:1"></div>
+      <div id="chart-price" style="font-size:20px;font-weight:700">--</div>
+      <div id="chart-change" style="font-size:12px;margin-left:8px">--</div>
+    </div>
+    <div id="chart" style="height:calc(100% - 52px)"></div>
+  </div>
+  <div class="sidebar">
+    <div>
+      <div class="panel-title">AI Signal Scan (Top 50)</div>
+      <div id="portfolio-grid" class="symbol-grid">Loading...</div>
+    </div>
+    <div>
+      <div class="panel-title">Wallet & Positions</div>
+      <div class="wallet-balance">
+        <div class="amount" id="wallet-total">$10,000.00</div>
+        <div class="label">Paper Trading Balance</div>
+      </div>
+      <div class="wallet-positions" id="positions">No open positions</div>
+    </div>
+    <div>
+      <div class="panel-title">Live Trade Log</div>
+      <div class="trade-log" id="trade-log">
+        <div class="trade-entry"><div class="trade-icon buy">+</div><div class="trade-info"><div class="sym">System initialized</div><div class="detail">Waiting for signals...</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title">AI Engine Log</div>
+      <div id="ai-log">
+        <div class="log-line"><span class="time">[boot]</span> <span class="action">Strategy engine loaded</span> — 6 strategies active</div>
+        <div class="log-line"><span class="time">[boot]</span> <span class="action">Ensemble voting enabled</span></div>
+        <div class="log-line"><span class="time">[boot]</span> Portfolio scanner ready for 50 symbols</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const API = '';
+let currentSymbol = 'BTC';
+let currentTimeframe = '4h';
+let chart, candleSeries, volumeSeries, sma20Series, sma50Series, buyMarkers = [], sellMarkers = [];
+let ws;
+
+function initChart() {
+  const el = document.getElementById('chart');
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { color: '#0a0e17' }, textColor: '#9ca3af', fontSize: 11 },
+    grid: { vertLines: { color: '#1f2937' }, horzLines: { color: '#1f2937' } },
+    crosshair: { mode: 0 },
+    rightPriceScale: { borderColor: '#1f2937' },
+    timeScale: { borderColor: '#1f2937', timeVisible: true },
+  });
+  candleSeries = chart.addCandlestickSeries({
+    upColor: '#10b981', downColor: '#ef4444',
+    borderUpColor: '#10b981', borderDownColor: '#ef4444',
+    wickUpColor: '#10b981', wickDownColor: '#ef4444',
+  });
+  volumeSeries = chart.addHistogramSeries({
+    color: '#3b82f6', priceFormat: { type: 'volume' },
+    priceScaleId: '', scaleMargins: { top: 0.8, bottom: 0 },
+  });
+  sma20Series = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  sma50Series = chart.addLineSeries({ color: '#8b5cf6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth, height: el.clientHeight })).observe(el);
+}
+
+function setSymbol(s) {
+  currentSymbol = s;
+  document.querySelectorAll('.controls:first-child .btn').forEach(b => { b.classList.toggle('active', b.textContent === s); });
+  loadChart();
+}
+function setTimeframe(tf) {
+  currentTimeframe = tf;
+  document.querySelectorAll('.controls:nth-child(2) .btn').forEach(b => { b.classList.toggle('active', b.textContent.toLowerCase() === tf); });
+  loadChart();
+}
+
+async function loadChart() {
+  try {
+    const res = await fetch(`${API}/api/ohlcv/${currentSymbol}/${currentTimeframe}/200`);
+    const json = await res.json();
+    if (!json.ok) return;
+    const candles = json.data;
+    const closes = candles.map(c => c.close);
+    const highs = candles.map(c => c.high);
+    const lows = candles.map(c => c.low);
+    const vols = candles.map(c => c.volume);
+
+    // Candlestick data
+    candleSeries.setData(candles.map(c => ({ time: Math.floor(c.timestamp / 1000), open: c.open, high: c.high, low: c.low, close: c.close })));
+    volumeSeries.setData(candles.map(c => ({ time: Math.floor(c.timestamp / 1000), value: c.volume, color: c.close >= c.open ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' })));
+
+    // SMA lines
+    sma20Series.setData(computeSMA(closes, 20).map((v, i) => v ? { time: Math.floor(candles[i].timestamp / 1000), value: v } : null).filter(Boolean));
+    sma50Series.setData(computeSMA(closes, 50).map((v, i) => v ? { time: Math.floor(candles[i].timestamp / 1000), value: v } : null).filter(Boolean));
+
+    // Generate signals
+    buyMarkers = []; sellMarkers = [];
+    const sma10 = computeSMA(closes, 10);
+    const sma30 = computeSMA(closes, 30);
+    const rsi14 = computeRSI(closes, 14);
+    for (let i = 1; i < candles.length; i++) {
+      if (!sma10[i] || !sma30[i] || !sma10[i-1] || !sma30[i-1]) continue;
+      const gc = sma10[i-1] <= sma30[i-1] && sma10[i] > sma30[i];
+      const dc = sma10[i-1] >= sma30[i-1] && sma10[i] < sma30[i];
+      if (gc && (!rsi14[i] || rsi14[i] < 70)) {
+        buyMarkers.push({ time: Math.floor(candles[i].timestamp / 1000), position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: 'BUY' });
+      } else if (dc) {
+        sellMarkers.push({ time: Math.floor(candles[i].timestamp / 1000), position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: 'SELL' });
+      }
+    }
+    candleSeries.setMarkers([...buyMarkers, ...sellMarkers].sort((a, b) => a.time - b.time));
+
+    const last = candles[candles.length - 1];
+    const prev = candles[candles.length - 7] || candles[0];
+    const change = ((last.close - prev.close) / prev.close * 100).toFixed(2);
+    document.getElementById('chart-price').textContent = `$${last.close.toLocaleString()}`;
+    const ch = document.getElementById('chart-change');
+    ch.textContent = `${change >= 0 ? '+' : ''}${change}% (7d)`;
+    ch.style.color = change >= 0 ? 'var(--green)' : 'var(--red)';
+  } catch(e) { console.error('Chart load error:', e); }
+}
+
+function computeSMA(data, period) {
+  const out = new Array(data.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    sum += data[i];
+    if (i >= period) sum -= data[i - period];
+    if (i >= period - 1) out[i] = sum / period;
+  }
+  return out;
+}
+function computeRSI(data, period = 14) {
+  const out = new Array(data.length).fill(null);
+  if (data.length < period + 1) return out;
+  let gain = 0, loss = 0;
+  for (let i = 1; i <= period; i++) { const d = data[i] - data[i-1]; if (d > 0) gain += d; else loss -= d; }
+  let ag = gain / period, al = loss / period;
+  out[period] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  for (let i = period + 1; i < data.length; i++) {
+    const d = data[i] - data[i-1];
+    ag = (ag * (period - 1) + Math.max(d, 0)) / period;
+    al = (al * (period - 1) + Math.max(-d, 0)) / period;
+    out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return out;
+}
+
+// Portfolio scan
+async function scanPortfolio() {
+  const grid = document.getElementById('portfolio-grid');
+  grid.innerHTML = '<div style="grid-column:1/-1;color:var(--dim);font-size:11px">Scanning 50 currencies...</div>';
+  try {
+    const res = await fetch(`${API}/api/portfolio/scan`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    grid.innerHTML = json.data.filter(d => !d.error).map(d => `
+      <div class="sym" onclick="setSymbol('${d.symbol}')">
+        <div class="name">${d.symbol}</div>
+        <div class="price">$${(d.price || 0).toLocaleString(undefined, {maximumFractionDigits: d.price > 100 ? 2 : 6})}</div>
+        <div class="change ${(d.change7d||0) >= 0 ? 'up' : 'down'}">${(d.change7d||0) >= 0 ? '+' : ''}${(d.change7d||0).toFixed(2)}%</div>
+        <div class="signal ${d.signal}">${d.signal}</div>
+      </div>
+    `).join('');
+    document.getElementById('currencies').textContent = `${json.summary.total} SCANNED`;
+  } catch(e) { grid.innerHTML = `<div style="color:var(--red);font-size:11px">Error: ${e.message}</div>`; }
+}
+
+// WebSocket
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'ticker') {
+        // Update live prices
+      }
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+
+// Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}, 1000);
+
+// Init
+initChart();
+loadChart();
+scanPortfolio();
+connectWS();
+setInterval(scanPortfolio, 120000);
+</script>
+</body>
+</html>

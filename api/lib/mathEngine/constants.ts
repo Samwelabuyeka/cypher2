@@ -7,6 +7,7 @@
  * Mathematical constants
  */
 export const PHI = 1.618033988749895; // Golden ratio
+export const GOLDEN_RATIO = 0.618033988749895; // 1/PHI
 export const E = 2.718281828459045; // Euler's number
 export const DEFAULT_DECAY_RATE = 0.1;
 export const DEFAULT_MAX_RECURSION_DEPTH = 5;

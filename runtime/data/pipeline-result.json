@@ -1,0 +1,209 @@
+{
+  "symbol": "BTC",
+  "dataRange": {
+    "start": "2017-08-17",
+    "end": "2026-09-09",
+    "totalCandles": 3311
+  },
+  "trainPeriod": {
+    "start": "2017-08-17",
+    "end": "2023-12-31",
+    "candles": 2328
+  },
+  "testPeriod": {
+    "start": "2024-01-01",
+    "end": "2026-09-09",
+    "candles": 983
+  },
+  "training": {
+    "bestParams": {
+      "fastSma": 10,
+      "slowSma": 40,
+      "rsiFilter": false,
+      "rsiOversold": 30,
+      "rsiOverbought": 70
+    },
+    "bestSharpe": 3.405476532215404,
+    "bestReturnPercent": 3056.7113529208336,
+    "topResults": [
+      {
+        "params": {
+          "fastSma": 10,
+          "slowSma": 40,
+          "rsiFilter": false,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.405476532215404,
+        "totalReturn": 3056.7113529208336,
+        "maxDrawdown": 46.77774832260701,
+        "winRate": 43.75,
+        "trades": 32
+      },
+      {
+        "params": {
+          "fastSma": 8,
+          "slowSma": 40,
+          "rsiFilter": true,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.357986310328141,
+        "totalReturn": 2435.757907174589,
+        "maxDrawdown": 56.20410553351562,
+        "winRate": 37.93103448275862,
+        "trades": 29
+      },
+      {
+        "params": {
+          "fastSma": 15,
+          "slowSma": 40,
+          "rsiFilter": true,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.3094474987698677,
+        "totalReturn": 1669.2777911282546,
+        "maxDrawdown": 55.82411679917101,
+        "winRate": 34.78260869565217,
+        "trades": 23
+      },
+      {
+        "params": {
+          "fastSma": 15,
+          "slowSma": 40,
+          "rsiFilter": false,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.30294227301941,
+        "totalReturn": 2285.0140145258542,
+        "maxDrawdown": 55.82411679917101,
+        "winRate": 44.827586206896555,
+        "trades": 29
+      },
+      {
+        "params": {
+          "fastSma": 8,
+          "slowSma": 40,
+          "rsiFilter": false,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.2970941859554603,
+        "totalReturn": 2547.2515761615778,
+        "maxDrawdown": 56.20410553351562,
+        "winRate": 40.625,
+        "trades": 32
+      },
+      {
+        "params": {
+          "fastSma": 10,
+          "slowSma": 40,
+          "rsiFilter": true,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.284286622081426,
+        "totalReturn": 2257.6254085012038,
+        "maxDrawdown": 48.226389097277476,
+        "winRate": 40,
+        "trades": 30
+      },
+      {
+        "params": {
+          "fastSma": 20,
+          "slowSma": 50,
+          "rsiFilter": true,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.2448143238572213,
+        "totalReturn": 1154.8757967383112,
+        "maxDrawdown": 53.76542489946282,
+        "winRate": 31.57894736842105,
+        "trades": 19
+      },
+      {
+        "params": {
+          "fastSma": 20,
+          "slowSma": 40,
+          "rsiFilter": false,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 3.1498503214440867,
+        "totalReturn": 1358.605398372457,
+        "maxDrawdown": 46.120032738649655,
+        "winRate": 46.42857142857143,
+        "trades": 28
+      },
+      {
+        "params": {
+          "fastSma": 20,
+          "slowSma": 60,
+          "rsiFilter": false,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 2.917517840736231,
+        "totalReturn": 792.470922665786,
+        "maxDrawdown": 45.149250623884804,
+        "winRate": 42.857142857142854,
+        "trades": 21
+      },
+      {
+        "params": {
+          "fastSma": 15,
+          "slowSma": 50,
+          "rsiFilter": false,
+          "rsiOversold": 30,
+          "rsiOverbought": 70
+        },
+        "sharpe": 2.87883451686393,
+        "totalReturn": 832.590192618469,
+        "maxDrawdown": 61.06961994989803,
+        "winRate": 36,
+        "trades": 25
+      }
+    ]
+  },
+  "outOfSample": {
+    "params": {
+      "fastSma": 10,
+      "slowSma": 40,
+      "rsiFilter": false,
+      "rsiOversold": 30,
+      "rsiOverbought": 70
+    },
+    "totalReturnPercent": 13.484604755049132,
+    "finalCapital": 11348.460475504913,
+    "sharpe": 0.9952507008948727,
+    "maxDrawdownPercent": 28.82229923187285,
+    "winRate": 35.714285714285715,
+    "totalTrades": 14,
+    "equityCurve": [
+      {
+        "date": "2024-04-15",
+        "equity": 10000,
+        "drawdown": 0
+      },
+      {
+        "date": "2025-01-19",
+        "equity": 11255.63,
+        "drawdown": 0.1
+      },
+      {
+        "date": "2025-08-21",
+        "equity": 13482.24,
+        "drawdown": 5.6
+      },
+      {
+        "date": "2026-03-12",
+        "equity": 10907.18,
+        "drawdown": 23.6
+      }
+    ]
+  },
+  "note": "Results computed from real Binance daily OHLCV data. Training period (2015-2023) was used to optimize strategy parameters. Test period (2024-2025) was NEVER seen during optimization. This is honest out-of-sample performance — not a guarantee of future results."
+}

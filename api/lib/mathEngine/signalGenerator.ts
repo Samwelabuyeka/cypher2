@@ -63,6 +63,7 @@ export interface PositionSizeParams {
   volatility: number;
   confidence: number;
   xi: number;
+  riskRewardRatio?: number;
 }
 
 export interface Position {
@@ -301,10 +302,10 @@ export function generateTradingSignal(params: SignalParams): TradingSignal {
       signalStrength = trend * psi;
       if (indicators.rsi) {
         if (indicators.rsi > 70) {
-          signalStrength += 0.5 * lambda;
+          signalStrength -= 0.5 * lambda;
           reasoning.push('RSI indicates overbought momentum');
         } else if (indicators.rsi < 30) {
-          signalStrength -= 0.5 * lambda;
+          signalStrength += 0.5 * lambda;
           reasoning.push('RSI indicates oversold momentum');
         }
       }
@@ -367,7 +368,8 @@ export function generateTradingSignal(params: SignalParams): TradingSignal {
   
   // Apply market depth adjustment if available
   if (marketDepth) {
-    const depthRatio = marketDepth.bidVolume / (marketDepth.bidVolume + marketDepth.askVolume);
+    const totalVolume = marketDepth.bidVolume + marketDepth.askVolume;
+    const depthRatio = totalVolume === 0 ? 0.5 : marketDepth.bidVolume / totalVolume;
     const depthSignal = (depthRatio - 0.5) * 2; // Normalize to -1 to 1
     signalStrength += depthSignal * 0.2 * lambda;
     reasoning.push(`Market depth ratio: ${depthRatio.toFixed(2)}`);
@@ -444,7 +446,7 @@ export function optimizePositionSize(params: PositionSizeParams): number {
   const lossProbability = 1 - confidence;
   
   // Assume risk/reward ratio based on risk parameter
-  const riskRewardRatio = 2.0; // Target 2:1 reward:risk
+  const riskRewardRatio = params.riskRewardRatio ?? 2.0;
   
   // Kelly fraction
   let kellyFraction = (winProbability * riskRewardRatio - lossProbability) / riskRewardRatio;
@@ -637,7 +639,8 @@ export function detectPatterns(priceHistory: PricePoint[]): Pattern[] {
  */
 export function calculateRiskScore(
   position: Position,
-  marketConditions: MarketConditions
+  marketConditions: MarketConditions,
+  accountSize: number = 10000
 ): RiskAssessment {
   const { entryPrice, currentPrice, size, leverage } = position;
   const { volatility, liquidity, trend } = marketConditions;
@@ -711,7 +714,7 @@ export function calculateRiskScore(
   }
   
   // 7. Position size risk (apply Lambda balance)
-  const positionRisk = (size / 1000000) * 10 * (lambda / LAMBDA_MODERATE); // Assuming $1M as large position
+  const positionRisk = (size / accountSize) * 10 * (lambda / LAMBDA_MODERATE);
   riskScore += positionRisk;
   
   if (size > 500000) {

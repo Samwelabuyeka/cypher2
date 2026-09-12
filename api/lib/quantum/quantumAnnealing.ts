@@ -172,49 +172,9 @@ export function quantumMetropolisStep(
   const classical_prob = Math.exp(-delta_energy / (temperature + 1e-10));
 
   // Quantum modification - coherence allows additional acceptance
-  const quantum_prob = classical_prob * (1 + quantum_coherence * 0.5);
+  const quantum_prob = Math.max(0, Math.min(1, classical_prob * (1 + quantum_coherence * 0.5)));
 
   return Math.random() < quantum_prob;
-}
-
-/**
- * Generate neighboring state with quantum fluctuations
- */
-function generateNeighborState(
-  current_state: number[],
-  temperature: number,
-  quantum_strength: number,
-  constraints: PortfolioConstraints
-): number[] {
-  const new_state = [...current_state];
-  const n = new_state.length;
-
-  // Randomly select assets to modify
-  const num_changes = Math.max(1, Math.floor(Math.random() * Math.min(3, n)));
-
-  for (let i = 0; i < num_changes; i++) {
-    const idx = Math.floor(Math.random() * n);
-    const fluctuation = quantumFluctuation(temperature, quantum_strength);
-    new_state[idx] += fluctuation;
-  }
-
-  // Normalize to satisfy budget constraint
-  const sum = new_state.reduce((a, b) => a + Math.abs(b), 0);
-  if (sum > 0) {
-    for (let i = 0; i < n; i++) {
-      new_state[i] = (new_state[i] / sum) * constraints.budget;
-    }
-  }
-
-  // Enforce position limits
-  const min_pos = constraints.min_position ?? 0;
-  const max_pos = constraints.max_position ?? constraints.budget;
-
-  for (let i = 0; i < n; i++) {
-    new_state[i] = Math.max(min_pos, Math.min(max_pos, new_state[i]));
-  }
-
-  return new_state;
 }
 
 /**
@@ -236,7 +196,10 @@ export function quantumAnneal(
   } = params;
 
   // Initialize state
-  let current_state = initial_state ?? Array(10).fill(0).map(() => Math.random());
+  if (!initial_state) {
+    throw new Error('initial_state is required: provide a state array matching the portfolio dimension');
+  }
+  let current_state = [...initial_state];
   let current_energy = calculateHamiltonian(current_state, objective, constraints);
 
   let best_state = [...current_state];
@@ -440,7 +403,8 @@ export function optimizePortfolioQuantum(
 
   const portfolio_return = weights.reduce((sum, w, i) => sum + w * expected_returns[i], 0);
 
-  const sharpe = risk > 0 ? portfolio_return / risk : 0;
+  const risk_free_rate = 0.02;
+  const sharpe = risk > 0 ? (portfolio_return - risk_free_rate) / risk : 0;
 
   return {
     weights,
@@ -483,7 +447,7 @@ Quantum Annealing Optimization Summary:
 - Initial energy: ${initial_energy.toFixed(4)}
 - Final energy: ${final_energy.toFixed(4)}
 - Energy reduction: ${energy_reduction.toFixed(4)}
-- Improvement: ${((energy_reduction / Math.abs(initial_energy)) * 100).toFixed(2)}%
+- Improvement: ${((energy_reduction / Math.max(Math.abs(initial_energy), 1e-10)) * 100).toFixed(2)}%
   `.trim();
 
   return {

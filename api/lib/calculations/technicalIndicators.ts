@@ -63,7 +63,7 @@ export function calculateEMA(prices: number[], period: number): number[] {
 function calculateStdDev(values: number[]): number {
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
-  const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+  const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / Math.max(1, values.length - 1);
   return Math.sqrt(variance);
 }
 
@@ -95,15 +95,27 @@ export function calculateRSI(prices: number[], period = 14): number[] {
   let avgLoss = losses.slice(0, period).reduce((sum, val) => sum + val, 0) / period;
   
   // Calculate RSI for first period
-  let rs = avgGain / avgLoss;
-  rsi.push(100 - (100 / (1 + rs)));
+  if (avgGain === 0 && avgLoss === 0) {
+    rsi.push(50);
+  } else if (avgLoss === 0) {
+    rsi.push(100);
+  } else {
+    const rs = avgGain / avgLoss;
+    rsi.push(100 - (100 / (1 + rs)));
+  }
   
   // Calculate RSI for remaining periods using smoothed averages
   for (let i = period; i < gains.length; i++) {
     avgGain = ((avgGain * (period - 1)) + gains[i]) / period;
     avgLoss = ((avgLoss * (period - 1)) + losses[i]) / period;
-    rs = avgGain / avgLoss;
-    rsi.push(100 - (100 / (1 + rs)));
+    if (avgGain === 0 && avgLoss === 0) {
+      rsi.push(50);
+    } else if (avgLoss === 0) {
+      rsi.push(100);
+    } else {
+      const rs = avgGain / avgLoss;
+      rsi.push(100 - (100 / (1 + rs)));
+    }
   }
   
   return rsi;
@@ -196,7 +208,7 @@ export function calculateStochastic(
     const lowestLow = Math.min(...lows.slice(i - period + 1, i + 1));
     const currentClose = closes[i];
     
-    const kValue = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+    const kValue = highestHigh === lowestLow ? 50 : ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
     k.push(kValue);
   }
   
@@ -284,13 +296,13 @@ export function calculateADX(
   
   // Calculate directional indicators and DX
   for (let i = 0; i < smoothedTR.length; i++) {
-    const pdi = (smoothedPlusDM[i] / smoothedTR[i]) * 100;
-    const mdi = (smoothedMinusDM[i] / smoothedTR[i]) * 100;
+    const pdi = smoothedTR[i] === 0 ? 0 : (smoothedPlusDM[i] / smoothedTR[i]) * 100;
+    const mdi = smoothedTR[i] === 0 ? 0 : (smoothedMinusDM[i] / smoothedTR[i]) * 100;
     
     plusDI.push(pdi);
     minusDI.push(mdi);
     
-    const dxValue = (Math.abs(pdi - mdi) / (pdi + mdi)) * 100;
+    const dxValue = (pdi + mdi) === 0 ? 0 : (Math.abs(pdi - mdi) / (pdi + mdi)) * 100;
     dx.push(dxValue);
   }
   
@@ -349,7 +361,7 @@ export function calculateVWAP(
     cumulativeTPV += tpv;
     cumulativeVolume += volumes[i];
     
-    vwap.push(cumulativeTPV / cumulativeVolume);
+    vwap.push(cumulativeVolume === 0 ? typicalPrice : cumulativeTPV / cumulativeVolume);
   }
   
   return vwap;
@@ -471,11 +483,14 @@ function detectHeadAndShoulders(prices: number[]): Array<{
         
         if (shoulderDiff <= shoulderTolerance) {
           const confidence = Math.max(0, 100 - (shoulderDiff / avgShoulder) * 100);
+          let startIdx = prices.indexOf(leftShoulder);
+          let endIdx = prices.indexOf(rightShoulder, startIdx + 1);
+          if (endIdx === -1) endIdx = prices.indexOf(rightShoulder);
           patterns.push({
             type: 'head-and-shoulders',
             confidence: Math.min(confidence, 100),
-            startIndex: i * 10,
-            endIndex: (i + 2) * 10
+            startIndex: startIdx,
+            endIndex: endIdx
           });
         }
       }
@@ -515,11 +530,14 @@ function detectDoubleTop(prices: number[]): Array<{
       
       if (peakDiff <= tolerance) {
         const confidence = Math.max(0, 100 - (peakDiff / avgPeak) * 100);
+        let startIdx = prices.indexOf(firstPeak);
+        let endIdx = prices.indexOf(secondPeak, startIdx + 1);
+        if (endIdx === -1) endIdx = prices.indexOf(secondPeak);
         patterns.push({
           type: 'double-top',
           confidence: Math.min(confidence, 100),
-          startIndex: i * 10,
-          endIndex: (i + 1) * 10
+          startIndex: startIdx,
+          endIndex: endIdx
         });
       }
     }
@@ -558,11 +576,14 @@ function detectDoubleBottom(prices: number[]): Array<{
       
       if (bottomDiff <= tolerance) {
         const confidence = Math.max(0, 100 - (bottomDiff / avgBottom) * 100);
+        let startIdx = prices.indexOf(firstBottom);
+        let endIdx = prices.indexOf(secondBottom, startIdx + 1);
+        if (endIdx === -1) endIdx = prices.indexOf(secondBottom);
         patterns.push({
           type: 'double-bottom',
           confidence: Math.min(confidence, 100),
-          startIndex: i * 10,
-          endIndex: (i + 1) * 10
+          startIndex: startIdx,
+          endIndex: endIdx
         });
       }
     }

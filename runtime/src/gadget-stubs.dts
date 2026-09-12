@@ -1,0 +1,87 @@
+// Stub declarations for missing modules to allow standalone compilation
+// This file should be included in tsconfig or referenced appropriately
+
+declare module 'gadget-server' {
+  export const api: any;
+  export const logger: any;
+  export const connections: any;
+  export const email: any;
+}
+
+declare module 'fastify' {
+  export function fastify(options?: any): any;
+  export type { FastifyRequest, FastifyReply } from 'fastify/types/request';
+}
+
+declare module 'ethers' {
+  export import BigNumber = ethers.BigNumber;
+  export import BigNumberish = ethers.BigNumberish;
+  export const utils: {
+    formatUnits: (value: any, decimals: number) => string;
+    parseUnits: (value: string, decimals: number) => any;
+    keccak256: (data: any) => string;
+    defaultAbiCoder: any;
+  };
+  export const providers: {
+    JsonRpcProvider: any;
+    Web3Provider: any;
+  };
+  export const constants: {
+    AddressZero: string;
+  };
+  export class Contract {
+    constructor(address: string, abi: any, signerOrProvider: any) {}
+  }
+  export class Wallet {
+    static createRandom(): Wallet;
+    connect(provider: any): Wallet;
+    signMessage(message: string): string;
+    signTransaction(transaction: any): any;
+    assignSigner(): Wallet;
+    getAddress(): string;
+    getBalance(): any;
+  }
+  export class utils {
+    static formatUnits: (value: any, decimals: number) => string;
+    static parseUnits: (value: string, decimals: number) => any;
+    static keccak256: (data: any) => string;
+  }
+  export namespace contract {
+    interface Interface {
+      parseLog(topics: any[], data: any[], address?: string): any[];
+    }
+  }
+}
+
+declare module 'ccxt' {
+  export interface Exchange {
+    id: string;
+    fetchOHLCV(symbol: string, timeframe: string, since?: number, limit?: number): Promise<any[]>;
+    fetchOrderBook(symbol: string, limit?: number): Promise<{ bids: any[]; asks: any[] }>;
+    loadMarkets(): Promise<any>;
+    fetchBalance(): Promise<any>;
+    fetchTicker(symbol: string): Promise<any>;
+    createMarketOrder(symbol: string, side: 'buy' | 'sell', amount: number): Promise<any>;
+    [key: string]: any;
+  }
+  export const binance: {
+    new (config?: any): Exchange;
+  };
+  export default { binance: { new (config?: any): Exchange } };
+}
+
+declare module 'ws' {
+  export class WebSocket {
+    static OPEN: number = 1;
+    static CLOSED: number = 3;
+    constructor(address: string, protocols?: string | string[]);
+    send(data: any, callback?: (err?: Error) => void): void;
+    close(code?: number, reason?: string): void;
+    on(event: 'open' | 'close' | 'error' | 'message', listener: (...args: any[]) => void): this;
+  }
+  export class WebSocketServer {
+    constructor(options: { port: number; host?: string });
+    on(event: 'connection' | 'error', listener: (...args: any[]) => void): this;
+    close(callback?: (err?: Error) => void): void;
+  }
+}

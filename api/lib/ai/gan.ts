@@ -164,7 +164,7 @@ class LSTMCell {
   private bc: Matrix;
   private bo: Matrix;
 
-  constructor(private inputSize: number, private hiddenSize: number) {
+  constructor(private inputSize: number, public hiddenSize: number) {
     const scale = Math.sqrt(2.0 / (inputSize + hiddenSize));
     this.Wf = Matrix.random(hiddenSize, inputSize + hiddenSize, scale);
     this.Wi = Matrix.random(hiddenSize, inputSize + hiddenSize, scale);

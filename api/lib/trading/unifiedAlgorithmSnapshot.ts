@@ -110,26 +110,24 @@ export function buildUnifiedAlgorithmSnapshot(
   const obv = calculateOBV(closes, volumes);
   const vwap = calculateVWAP(highs, lows, closes, volumes);
 
+  const returns = closes.slice(1).map((c, i) => (c - closes[i]) / Math.max(1e-9, closes[i]));
+  const actualMeanReturn = returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
+  const actualVariance = returns.length ? returns.reduce((s, r) => s + (r - actualMeanReturn) ** 2, 0) / returns.length : 0.0001;
+  const actualVol = Math.sqrt(actualVariance);
+
   const qVar = quantumMonteCarloVaR(
     {
-      positions: [
-        { symbol, quantity: 1, currentPrice: currentPrice || 1 },
-        { symbol: `${symbol}:hedge1`, quantity: 0.7, currentPrice: (currentPrice || 1) * 0.98 },
-        { symbol: `${symbol}:hedge2`, quantity: 0.5, currentPrice: (currentPrice || 1) * 1.02 },
-      ],
+      positions: [{ symbol, quantity: 1, currentPrice: currentPrice || 1 }],
+      correlationMatrix: [[1]],
     },
     0.95,
     300
   );
 
   const optimized = optimizePortfolioQuantum(
-    ["core", "hedge1", "hedge2"],
-    [0.12, 0.08, 0.1],
-    [
-      [0.04, 0.01, 0.015],
-      [0.01, 0.03, 0.01],
-      [0.015, 0.01, 0.035],
-    ],
+    [symbol],
+    [actualMeanReturn],
+    [[actualVariance]],
     {
       budget: 1,
       min_position: 0,
@@ -139,57 +137,42 @@ export function buildUnifiedAlgorithmSnapshot(
     { num_iterations: 120 }
   );
 
+  const spread = highs.length > 0 && lows.length > 0
+    ? (highs[highs.length - 1] - lows[lows.length - 1]) / Math.max(1, currentPrice)
+    : 0.001;
   const arbs = findArbitrageOpportunities(
     [
-      { exchange: "exchangeA", symbol, bid: currentPrice * 0.999, ask: currentPrice * 1.001, timestamp: new Date() },
-      { exchange: "exchangeB", symbol, bid: currentPrice * 1.001, ask: currentPrice * 1.003, timestamp: new Date() },
-      { exchange: "exchangeC", symbol, bid: currentPrice * 0.997, ask: currentPrice * 1.0, timestamp: new Date() },
+      { exchange: "primary", symbol, bid: currentPrice * (1 - spread / 2), ask: currentPrice * (1 + spread / 2), timestamp: new Date() },
     ],
     0.0005
   );
-  const returns = closes.slice(1).map((c, i) => (c - closes[i]) / Math.max(1e-9, closes[i]));
   const histVaR = returns.length ? historicalVaR(returns, 95) : { var: 0 };
   const pVaR = parametricVaR(
-    [
-      { weight: 0.5, expectedReturn: 0.12, volatility: 0.2 },
-      { weight: 0.3, expectedReturn: 0.08, volatility: 0.16 },
-      { weight: 0.2, expectedReturn: 0.1, volatility: 0.18 },
-    ],
-    [
-      [0.04, 0.01, 0.015],
-      [0.01, 0.03, 0.01],
-      [0.015, 0.01, 0.035],
-    ],
+    [{ weight: 1, expectedReturn: actualMeanReturn, volatility: actualVol }],
+    [[actualVariance]],
     95,
     1
   );
   const mcVaR = monteCarloVaR(
-    [
-      { weight: 0.5, expectedReturn: 0.12, volatility: 0.2 },
-      { weight: 0.3, expectedReturn: 0.08, volatility: 0.16 },
-      { weight: 0.2, expectedReturn: 0.1, volatility: 0.18 },
-    ],
-    [returns, returns.map((r) => r * 0.8), returns.map((r) => r * 1.1)],
+    [{ weight: 1, expectedReturn: actualMeanReturn, volatility: actualVol }],
+    [returns],
     { simulations: 300, timeHorizon: 1, useAntitheticVariates: true, useControlVariates: true },
     95,
     1
   );
   const sharpeOpt = maximizeSharpeRatio(
-    [0.12, 0.08, 0.1],
-    [
-      [0.04, 0.01, 0.015],
-      [0.01, 0.03, 0.01],
-      [0.015, 0.01, 0.035],
-    ],
+    [actualMeanReturn],
+    [[actualVariance]],
     0.02
   );
   const momentum = returns.length ? calculateMomentum(closes, Math.min(10, closes.length - 1)) : { rateOfChange: 0 };
+  const positionSize = currentPrice > 0 ? Math.round(10000 * 0.01) : 0;
   const riskScore = calculateRiskScore({
     volatility: Math.abs(atr[atr.length - 1] ?? 0) / Math.max(1, currentPrice),
     maxDrawdown: Math.abs(histVaR.var) * 100,
     leverage: 1,
-    positionSize: 1,
-    accountSize: 10,
+    positionSize,
+    accountSize: 10000,
   });
   const coverage = scanProjectAlgorithms();
 

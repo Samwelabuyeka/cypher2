@@ -413,7 +413,7 @@ export class NeuroplasticityEngine {
   /**
    * Apply Hebbian learning: "Neurons that fire together, wire together"
    */
-  applyHebbianLearning(network: NeuralNetwork, activationHistory: ActivityMap): void {
+applyHebbianLearning(network: NeuralNetwork, activationHistory: ActivityMap): void {
     for (const connection of network.connections) {
       const fromActivity = activationHistory[connection.from];
       const toActivity = activationHistory[connection.to];
@@ -421,8 +421,8 @@ export class NeuroplasticityEngine {
       if (fromActivity && toActivity) {
         // Calculate correlation
         const correlation = this.calculateCorrelation(
-          fromActivity.activations,
-          toActivity.activations
+          (fromActivity as any)[connection.from as any]?.activations,
+          (toActivity as any)[connection.to as any]?.activations
         );
 
         // Update weight based on correlation
@@ -513,10 +513,10 @@ export class NeuroplasticityEngine {
 
     for (let i = 0; i < neuronIds.length; i++) {
       for (let j = i + 1; j < neuronIds.length; j++) {
-        const neuron1 = activityMap[neuronIds[i]];
-        const neuron2 = activityMap[neuronIds[j]];
+        const f1 = (activityMap[neuronIds[i]] as any).firingRate;
+        const f2 = (activityMap[neuronIds[j]] as any).firingRate;
 
-        if (neuron1.firingRate > 0.7 && neuron2.firingRate > 0.7) {
+        if (f1 > 0.7 && f2 > 0.7) {
           if (Math.random() < this.config.growthProbability) {
             highActivityPairs.push([neuronIds[i], neuronIds[j]]);
           }

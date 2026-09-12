@@ -35,17 +35,30 @@ function ema(values: number[], period: number): number {
 function rsi(values: number[], period: number = 14): number {
   if (values.length < period + 1) return 50;
 
-  let gains = 0;
-  let losses = 0;
-
-  for (let i = values.length - period; i < values.length; i++) {
-    const change = values[i] - values[i - 1];
-    if (change > 0) gains += change;
-    else losses -= change;
+  const changes: number[] = [];
+  for (let i = 1; i < values.length; i++) {
+    changes.push(values[i] - values[i - 1]);
   }
 
-  if (losses === 0) return 100;
-  const rs = gains / losses;
+  let avgGain = 0;
+  let avgLoss = 0;
+
+  for (let i = 0; i < period; i++) {
+    if (changes[i] > 0) avgGain += changes[i];
+    else avgLoss -= changes[i];
+  }
+  avgGain /= period;
+  avgLoss /= period;
+
+  for (let i = period; i < changes.length; i++) {
+    const gain = changes[i] > 0 ? changes[i] : 0;
+    const loss = changes[i] < 0 ? -changes[i] : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
+
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
   return 100 - 100 / (1 + rs);
 }
 
@@ -54,7 +67,7 @@ function rsi(values: number[], period: number = 14): number {
  */
 export function freqtradeInspiredSignal(candles: Candle[]): UpstreamSignal {
   const closes = candles.map((c) => c.close);
-  if (closes.length < 50) {
+  if (closes.length < 80) {
     return { action: "hold", confidence: 0, reason: "insufficient_data" };
   }
 
@@ -91,7 +104,7 @@ export function freqtradeInspiredSignal(candles: Candle[]): UpstreamSignal {
  */
 export function hummingbotInspiredQuote(
   midPrice: number,
-  inventorySkew: number,
+  inventorySkew: number = 0,
   volatility: number,
   riskAversion: number = 0.1
 ): HummingbotQuote {

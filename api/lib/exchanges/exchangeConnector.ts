@@ -52,7 +52,7 @@ interface ExchangeInfo {
 }
 
 class ExchangeConnector {
-  private exchanges: Map<string, ccxt.Exchange>;
+  private exchanges: Map<string, any>;
   private websockets: Map<string, any>;
 
   constructor() {
@@ -177,7 +177,7 @@ class ExchangeConnector {
 
     const orderBook = await this.retryWithBackoff(() =>
       exchange.fetchOrderBook(symbol, limit)
-    );
+    ) as any;
 
     const bidDepth = orderBook.bids.reduce((sum: number, [price, amount]: [number, number]) => sum + (price * amount), 0);
     const askDepth = orderBook.asks.reduce((sum: number, [price, amount]: [number, number]) => sum + (price * amount), 0);
@@ -419,21 +419,21 @@ class ExchangeConnector {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
         
-        if (error instanceof ccxt.RateLimitExceeded) {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === ' RateLimitExceeded') {
           const delay = Math.pow(2, attempt) * 1000;
           console.log(`Rate limit exceeded, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         
-        if (error instanceof ccxt.ExchangeNotAvailable) {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === ' ExchangeNotAvailable') {
           const delay = Math.pow(2, attempt) * 2000;
           console.log(`Exchange not available, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         
-        if (error instanceof ccxt.NetworkError) {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === ' NetworkError') {
           const delay = Math.pow(2, attempt) * 1000;
           console.log(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, delay));

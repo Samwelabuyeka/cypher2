@@ -12,14 +12,14 @@ function stdDev(values: number[]): number {
   if (values.length === 0) return 0;
   const avg = mean(values);
   const squareDiffs = values.map(value => Math.pow(value - avg, 2));
-  return Math.sqrt(mean(squareDiffs));
+  return Math.sqrt(squareDiffs.reduce((s, v) => s + v, 0) / Math.max(1, values.length - 1));
 }
 
 function variance(values: number[]): number {
   if (values.length === 0) return 0;
   const avg = mean(values);
   const squareDiffs = values.map(value => Math.pow(value - avg, 2));
-  return mean(squareDiffs);
+  return squareDiffs.reduce((s, v) => s + v, 0) / Math.max(1, values.length - 1);
 }
 
 function covariance(x: number[], y: number[]): number {
@@ -345,18 +345,35 @@ export function calculateCointegration(
 
   const spreadDeviations = spread.map(s => s - spreadMean);
   
-  let adfStat = 0;
-  let sumSquaredDev = 0;
+  const depVar = spreadChanges;
+  const laggedSpread = spread.slice(0, spreadChanges.length);
+  const m = depVar.length;
 
-  for (let i = 1; i < spreadDeviations.length; i++) {
-    adfStat += spreadDeviations[i - 1] * spreadChanges[i - 1];
-    sumSquaredDev += spreadDeviations[i - 1] * spreadDeviations[i - 1];
+  if (m < 3) {
+    return { isCointegrated: false, spread, cointegrationScore: 0, hedgeRatio };
   }
 
-  const adfCoef = sumSquaredDev === 0 ? 0 : adfStat / sumSquaredDev;
-  const cointegrationScore = Math.abs(adfCoef);
-  
-  const isCointegrated = cointegrationScore > 0.1;
+  const depMean = mean(depVar);
+  const lagMean = mean(laggedSpread);
+
+  let ssXY = 0;
+  let ssXX = 0;
+  let ssYY = 0;
+
+  for (let i = 0; i < m; i++) {
+    ssXY += (laggedSpread[i] - lagMean) * (depVar[i] - depMean);
+    ssXX += (laggedSpread[i] - lagMean) * (laggedSpread[i] - lagMean);
+    ssYY += (depVar[i] - depMean) * (depVar[i] - depMean);
+  }
+
+  const adfCoef = ssXX === 0 ? 0 : ssXY / ssXX;
+  const ssRes = ssYY - adfCoef * ssXY;
+  const mse = m > 2 ? ssRes / (m - 2) : 0;
+  const seCoef = ssXX > 0 && mse > 0 ? Math.sqrt(mse / ssXX) : Infinity;
+  const adfStat = seCoef === 0 ? 0 : adfCoef / seCoef;
+
+  const cointegrationScore = Math.abs(adfStat);
+  const isCointegrated = adfStat < -2.86;
 
   return {
     isCointegrated,
@@ -395,7 +412,7 @@ export function calculateVolatilityForecast(
 
   let forecastVariance = currentVariance;
   for (let i = 0; i < horizon; i++) {
-    forecastVariance = omega + alpha * forecastVariance;
+    forecastVariance = omega + (alpha + beta) * forecastVariance;
   }
 
   const currentVolatility = Math.sqrt(currentVariance);
@@ -524,7 +541,7 @@ export function calculateOmegaRatio(
   const avgLoss = losses.length > 0 ? mean(losses) : 0;
 
   return {
-    omegaRatio: Math.min(100, omegaRatio),
+    omegaRatio: omegaRatio,
     probabilityOfGain,
     avgGain,
     avgLoss
