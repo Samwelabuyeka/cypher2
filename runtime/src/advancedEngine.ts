@@ -9,6 +9,7 @@ export interface Signal {
   type: "BUY" | "SELL" | "HOLD";
   symbol: string;
   price: number;
+  strength?: number;
 }
 
 export type EngineSignal = Signal;
@@ -155,20 +156,25 @@ const STRATEGY_WEIGHTS: Record<StrategyName, number> = {
 // Helpers
 // ============================================================================
 
-function signalToVote(s: EngineSignal): 1 | 0 | -1 {
+function signalToVote(s: EngineSignal): number {
+  if (s.strength !== undefined) {
+    if (s.type === "BUY") return Math.max(0, Math.min(1, s.strength));
+    if (s.type === "SELL") return Math.min(0, Math.max(-1, -s.strength));
+    return 0;
+  }
   if (s.type === "BUY") return 1;
   if (s.type === "SELL") return -1;
   return 0;
 }
 
 function h(ts: number, sym: string, price: number): EngineSignal {
-  return { timestamp: ts, type: "HOLD", symbol: sym, price };
+  return { timestamp: ts, type: "HOLD", symbol: sym, price, strength: 0 };
 }
-function b(ts: number, sym: string, price: number): EngineSignal {
-  return { timestamp: ts, type: "BUY", symbol: sym, price };
+function b(ts: number, sym: string, price: number, strength: number = 1): EngineSignal {
+  return { timestamp: ts, type: "BUY", symbol: sym, price, strength: Math.min(1, Math.max(0, strength)) };
 }
-function s(ts: number, sym: string, price: number): EngineSignal {
-  return { timestamp: ts, type: "SELL", symbol: sym, price };
+function s(ts: number, sym: string, price: number, strength: number = 1): EngineSignal {
+  return { timestamp: ts, type: "SELL", symbol: sym, price, strength: Math.min(1, Math.max(0, strength)) };
 }
 
 function computeSMA(data: number[], period: number): (number | null)[] {
@@ -708,19 +714,49 @@ export function combineSignalsWithWeights(
   threshold: number
 ): EngineSignal[] {
   const totalWeight = STRATEGY_NAMES.reduce((s, n) => s + (weights[n] || STRATEGY_WEIGHTS[n]), 0);
+  const closes = candles.map(c => c.close);
   const combined: EngineSignal[] = [];
   for (let i = 0; i < candles.length; i++) {
     let score = 0;
+    let totalStrength = 0;
+    let activeVotes = 0;
     for (let idx = 0; idx < STRATEGY_NAMES.length; idx++) {
       const sig = allSignals[idx][i];
       const vote = sig ? signalToVote(sig) : 0;
-      score += vote * (weights[STRATEGY_NAMES[idx]] || STRATEGY_WEIGHTS[STRATEGY_NAMES[idx]]);
+      const w = weights[STRATEGY_NAMES[idx]] || STRATEGY_WEIGHTS[STRATEGY_NAMES[idx]];
+      score += vote * w;
+      if (sig && sig.type !== "HOLD") {
+        totalStrength += Math.abs(vote) * w;
+        activeVotes++;
+      }
     }
     if (totalWeight > 0) score /= totalWeight;
+
+    let regimeMultiplier = 1.0;
+    if (i >= 100) {
+      const window = closes.slice(i - 100, i + 1);
+      try {
+        const hurst = calculateHurstExponent(window);
+        if (hurst.interpretation === "trending") regimeMultiplier = 1.2;
+        else if (hurst.interpretation === "mean-reverting") regimeMultiplier = 0.7;
+        else regimeMultiplier = 0.5;
+      } catch {}
+    }
+
+    const avgStrength = activeVotes > 0 ? totalStrength / activeVotes : 0;
+    const strengthMultiplier = 0.5 + avgStrength * 0.5;
+    const adjustedScore = score * regimeMultiplier * strengthMultiplier;
+
     let type: EngineSignal["type"] = "HOLD";
-    if (score > threshold) type = "BUY";
-    else if (score < -threshold) type = "SELL";
-    combined.push({ timestamp: candles[i].timestamp, type, symbol, price: candles[i].close });
+    let strength = 0;
+    if (adjustedScore > threshold) {
+      type = "BUY";
+      strength = Math.min(1, adjustedScore);
+    } else if (adjustedScore < -threshold) {
+      type = "SELL";
+      strength = Math.min(1, -adjustedScore);
+    }
+    combined.push({ timestamp: candles[i].timestamp, type, symbol, price: candles[i].close, strength });
   }
   return combined;
 }

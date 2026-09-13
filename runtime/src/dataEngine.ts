@@ -10,7 +10,7 @@ import {
 } from "../../api/lib/backtesting/backtestEngine";
 import { MarketDataService, type Candle } from "./exchangeService";
 
-const DATA_DIR = join(process.cwd(), "runtime", "data");
+const DATA_DIR = join(__dirname, "..", "data");
 const CACHE_FILE = join(DATA_DIR, "btc-usdt-1d-10yr.json");
 
 export const market = new MarketDataService(
@@ -21,37 +21,53 @@ export const market = new MarketDataService(
 
 const MS_PER_DAY = 86_400_000;
 
-export async function fetchTenYearsDaily(symbol: string): Promise<Candle[]> {
-  if (existsSync(CACHE_FILE)) {
-    console.log("  [data] Loading cached 10yr daily data");
-    return JSON.parse(readFileSync(CACHE_FILE, "utf-8"));
-  }
-  console.log(`  [data] Fetching 10 years of daily ${symbol}/USDT from Binance...`);
-  const now = Date.now();
-  const start = now - 10 * 365 * MS_PER_DAY;
-  const all: Candle[] = [];
-  let cursor = start;
+function getCacheFile(symbol: string): string {
+  return join(DATA_DIR, `${symbol.toLowerCase()}-usdt-1d-10yr.json`);
+}
 
-  while (cursor < now) {
-    const raw: any = await (market as any).exchange.fetchOHLCV(
-      `${symbol.toUpperCase()}/USDT`, "1d", cursor, 1000
-    );
-    for (const [ts, open, high, low, close, vol] of raw) {
-      all.push({ timestamp: ts, open, high, low, close, volume: vol });
+export async function fetchTenYearsDaily(symbol: string, retries = 2): Promise<Candle[]> {
+  const cacheFile = getCacheFile(symbol);
+  if (existsSync(cacheFile)) {
+    console.log(`  [data] Loading cached ${symbol} daily data`);
+    const cached: Candle[] = JSON.parse(readFileSync(cacheFile, "utf-8"));
+    if (cached.length > 100) return cached;
+  }
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`  [data] Fetching daily ${symbol}/USDT from Binance${attempt > 0 ? ` (attempt ${attempt + 1})` : ""}...`);
+      const now = Date.now();
+      const start = now - 10 * 365 * MS_PER_DAY;
+      const all: Candle[] = [];
+      let cursor = start;
+      while (cursor < now) {
+        const raw: any = await (market as any).exchange.fetchOHLCV(
+          `${symbol.toUpperCase()}/USDT`, "1d", cursor, 1000
+        );
+        if (!raw || raw.length === 0) break;
+        for (const [ts, open, high, low, close, vol] of raw) {
+          all.push({ timestamp: ts, open, high, low, close, volume: vol });
+        }
+        cursor += 1000 * MS_PER_DAY;
+        if (raw.length < 1000) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      const seen = new Set<number>();
+      const deduped = all
+        .filter((c) => { if (seen.has(c.timestamp)) return false; seen.add(c.timestamp); return true; })
+        .sort((a, b) => a.timestamp - b.timestamp);
+      if (deduped.length > 100) {
+        mkdirSync(DATA_DIR, { recursive: true });
+        writeFileSync(cacheFile, JSON.stringify(deduped));
+        console.log(`  [data] Saved ${deduped.length} candles for ${symbol}`);
+        return deduped;
+      }
+    } catch (e: any) {
+      console.log(`  [data] Attempt ${attempt + 1} failed for ${symbol}: ${e.message}`);
+      if (attempt < retries) await new Promise(r => setTimeout(r, 2000));
     }
-    cursor += 1000 * MS_PER_DAY;
-    await new Promise((r) => setTimeout(r, 300));
   }
-
-  const seen = new Set<number>();
-  const deduped = all
-    .filter((c) => { if (seen.has(c.timestamp)) return false; seen.add(c.timestamp); return true; })
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(CACHE_FILE, JSON.stringify(deduped));
-  console.log(`  [data] Saved ${deduped.length} candles`);
-  return deduped;
+  console.log(`  [data] No data available for ${symbol}`);
+  return [];
 }
 
 export function candlesToMarketData(candles: Candle[], symbol = "BTC/USDT"): MarketData[] {
