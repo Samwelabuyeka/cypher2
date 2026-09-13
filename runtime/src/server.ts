@@ -6,15 +6,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { MarketDataService, type Candle } from "./exchangeService";
-import { runRealBacktest, type RunBacktestParams } from "./backtestService";
-import { runAnalysisSnapshot } from "./snapshotService";
 import { runFullPipeline } from "./pipeline";
-import {
-  BacktestEngine,
-  type BacktestConfig,
-  type MarketData,
-  type Strategy,
-} from "../../api/lib/backtesting/backtestEngine";
+import { getDb } from "./db";
+import authRouter from "./auth";
+import walletRouter from "./wallet";
+import mpesaRouter from "./mpesa";
+import apiKeysRouter from "./apiKeys";
+import tradingConfigRouter from "./tradingConfig";
+import { runAiCycle } from "./aiTrader";
+import { SUPPORTED_EXCHANGES } from "./exchangeManager";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -30,7 +30,6 @@ const market = new MarketDataService(
   process.env.BINANCE_API_SECRET
 );
 
-// Top 50 Binance USDT pairs for simultaneous trading
 const TOP_50_SYMBOLS = [
   "BTC", "ETH", "BNB", "SOL", "XRP", "DOGE", "ADA", "AVAX", "DOT", "LINK",
   "MATIC", "UNI", "SHIB", "LTC", "BCH", "ATOM", "FIL", "APT", "ARB", "OP",
@@ -72,12 +71,24 @@ function rsi(closes: number[], period = 14): number[] {
   return out;
 }
 
+// ── Auth & User Routes ────────────────────────────────────────────────────
+app.use("/api/auth", authRouter);
+app.use("/api/wallet", walletRouter);
+app.use("/api/mpesa", mpesaRouter);
+app.use("/api/keys", apiKeysRouter);
+app.use("/api/trading", tradingConfigRouter);
+
+// ── Supported exchanges ───────────────────────────────────────────────────
+app.get("/api/exchanges", (_req, res) => {
+  res.json({ ok: true, exchanges: SUPPORTED_EXCHANGES });
+});
+
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
     name: "cypher-runtime",
-    version: "1.0.0",
+    version: "2.0.0",
     mode: "real",
     source: "live-binance",
     currencies: TOP_50_SYMBOLS.length,
@@ -125,12 +136,7 @@ app.get("/api/ohlcv/:symbol/:timeframe/:limit?", async (req, res) => {
       req.params.timeframe,
       limit
     );
-    res.json({
-      ok: true,
-      source: "live-binance",
-      count: candles.length,
-      data: candles,
-    });
+    res.json({ ok: true, source: "live-binance", count: candles.length, data: candles });
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -146,53 +152,37 @@ app.get("/api/orderbook/:symbol/:limit?", async (req, res) => {
   }
 });
 
-// ── Multi-symbol analysis ──────────────────────────────────────────────────
-app.get("/api/analysis/:symbol/:timeframe?", async (req, res) => {
+// ── Portfolio scan ──────────────────────────────────────────────────────────
+app.get("/api/portfolio/scan", async (_req, res) => {
   try {
-    const snapshot = await runAnalysisSnapshot(
-      req.params.symbol,
-      req.params.timeframe ?? "1h",
-      120
-    );
-    res.json({ ok: true, data: snapshot });
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.get("/api/analysis/batch/:symbols/:timeframe?", async (req, res) => {
-  try {
-    const symbols = req.params.symbols.split(",");
-    const tf = req.params.timeframe ?? "1h";
-    const results = await Promise.all(
-      symbols.map((s) =>
-        runAnalysisSnapshot(s, tf, 120).catch((e) => ({
-          symbol: s,
-          error: e.message,
-        }))
-      )
-    );
-    res.json({ ok: true, count: results.length, data: results });
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// ── Backtest ────────────────────────────────────────────────────────────────
-app.post("/api/backtest", async (req, res) => {
-  try {
-    const params: RunBacktestParams = {
-      symbol: req.body.symbol ?? "BTC",
-      timeframe: req.body.timeframe ?? "1d",
-      limit: req.body.limit ?? 500,
-      initialCapital: req.body.initialCapital ?? 10_000,
-      short: req.body.short ?? 10,
-      long: req.body.long ?? 30,
-      commission: req.body.commission ?? 0.001,
-      slippage: req.body.slippage ?? 0.001,
-    };
-    const result = await runRealBacktest(params);
-    res.json({ ok: true, data: result });
+    const results: any[] = [];
+    for (let i = 0; i < TOP_50_SYMBOLS.length; i += 5) {
+      const batch = TOP_50_SYMBOLS.slice(i, i + 5);
+      const batchResults = await Promise.all(
+        batch.map(async (symbol) => {
+          try {
+            const candles = await market.fetchOHLCV(symbol, "1d", 60);
+            if (candles.length < 30) return { symbol, error: "insufficient data" };
+            const closes = candles.map((c) => c.close);
+            const currentPrice = closes[closes.length - 1];
+            const sma10 = sma(closes, 10);
+            const sma30 = sma(closes, 30);
+            const rsi14 = rsi(closes, 14);
+            const lastRsi = rsi14[rsi14.length - 1];
+            const lastSma10 = sma10[sma10.length - 1];
+            const lastSma30 = sma30[sma30.length - 1];
+            const priceChange7d = ((currentPrice - closes[Math.max(0, closes.length - 8)]) / closes[Math.max(0, closes.length - 8)]) * 100;
+            const signal = lastSma10 > lastSma30 && lastRsi < 70 ? "BUY" : lastSma10 < lastSma30 && lastRsi > 30 ? "SELL" : "HOLD";
+            return { symbol, price: currentPrice, change7d: Math.round(priceChange7d * 100) / 100, rsi: Math.round((lastRsi ?? 50) * 10) / 10, signal, sma10: lastSma10, sma30: lastSma30 };
+          } catch { return { symbol, error: "fetch failed" }; }
+        })
+      );
+      results.push(...batchResults);
+      if (i + 5 < TOP_50_SYMBOLS.length) await new Promise((r) => setTimeout(r, 500));
+    }
+    const buys = results.filter((r) => r.signal === "BUY");
+    const sells = results.filter((r) => r.signal === "SELL");
+    res.json({ ok: true, timestamp: new Date().toISOString(), summary: { total: results.length, buys: buys.length, sells: sells.length, holds: results.length - buys.length - sells.length }, opportunities: buys.sort((a: any, b: any) => (b.change7d ?? 0) - (a.change7d ?? 0)), data: results });
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -208,69 +198,24 @@ app.post("/api/pipeline", async (req, res) => {
   }
 });
 
-// ── Live portfolio scan: analyze all 50 currencies ─────────────────────────
-app.get("/api/portfolio/scan", async (_req, res) => {
+// ── AI Trading ──────────────────────────────────────────────────────────────
+app.get("/api/ai/analyze", async (req: any, res) => {
   try {
-    console.log("[portfolio] Scanning all 50 currencies...");
-    const results: any[] = [];
-    for (let i = 0; i < TOP_50_SYMBOLS.length; i += 5) {
-      const batch = TOP_50_SYMBOLS.slice(i, i + 5);
-      const batchResults = await Promise.all(
-        batch.map(async (symbol) => {
-          try {
-            const candles = await market.fetchOHLCV(symbol, "1d", 60);
-            if (candles.length < 30) return { symbol, error: "insufficient data" };
-            const closes = candles.map((c) => c.close);
-            const volumes = candles.map((c) => c.volume);
-            const currentPrice = closes[closes.length - 1];
-            const sma10 = sma(closes, 10);
-            const sma30 = sma(closes, 30);
-            const rsi14 = rsi(closes, 14);
-            const lastRsi = rsi14[rsi14.length - 1];
-            const lastSma10 = sma10[sma10.length - 1];
-            const lastSma30 = sma30[sma30.length - 1];
-            const priceChange7d =
-              ((currentPrice - closes[Math.max(0, closes.length - 8)]) /
-                closes[Math.max(0, closes.length - 8)]) *
-              100;
-            const avgVolume =
-              volumes.slice(-7).reduce((a, b) => a + b, 0) / 7;
-            const signal =
-              lastSma10 > lastSma30 && lastRsi < 70
-                ? "BUY"
-                : lastSma10 < lastSma30 && lastRsi > 30
-                  ? "SELL"
-                  : "HOLD";
-            return {
-              symbol,
-              price: currentPrice,
-              change7d: Math.round(priceChange7d * 100) / 100,
-              rsi: Math.round((lastRsi ?? 50) * 10) / 10,
-              signal,
-              sma10: lastSma10,
-              sma30: lastSma30,
-              avgVolume7d: avgVolume,
-            };
-          } catch {
-            return { symbol, error: "fetch failed" };
-          }
-        })
-      );
-      results.push(...batchResults);
-      if (i + 5 < TOP_50_SYMBOLS.length) await new Promise((r) => setTimeout(r, 500));
-    }
-    const buys = results.filter((r) => r.signal === "BUY");
-    const sells = results.filter((r) => r.signal === "SELL");
-    res.json({
-      ok: true,
-      timestamp: new Date().toISOString(),
-      summary: { total: results.length, buys: buys.length, sells: sells.length, holds: results.length - buys.length - sells.length },
-      opportunities: buys.sort((a, b) => (b.change7d ?? 0) - (a.change7d ?? 0)),
-      data: results,
-    });
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    if (!token) return res.status(401).json({ error: "Auth required" });
+    const jwt = await import("jsonwebtoken");
+    const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "cypher-secret") as { userId: string };
+    const { analyzeAndDecide } = await import("./aiTrader");
+    const decisions = await analyzeAndDecide(decoded.userId);
+    res.json({ ok: true, decisions });
   } catch (e: any) {
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).json({ error: e.message });
   }
+});
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
 // ── Start server ───────────────────────────────────────────────────────────
@@ -288,23 +233,34 @@ wss.on("connection", (ws) => {
   ws.on("close", () => clearInterval(interval));
 });
 
+// AI trading cycle (every 15 minutes)
+let aiRunning = false;
+setInterval(async () => {
+  if (aiRunning) return;
+  aiRunning = true;
+  try {
+    const db = getDb();
+    const users = db.prepare("SELECT userId FROM trading_config WHERE enabled = 1 AND autoTrade = 1").all() as any[];
+    for (const u of users) {
+      try { await runAiCycle(u.userId); } catch {}
+    }
+  } catch {}
+  aiRunning = false;
+}, 15 * 60 * 1000);
+
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`\n  ┌──────────────────────────────────────────────────┐`);
-  console.log(`  │  cypher-runtime  v1.0.0                          │`);
+  console.log(`  │  cypher-runtime  v2.0.0                          │`);
   console.log(`  │  Source: LIVE BINANCE  |  Currencies: ${TOP_50_SYMBOLS.length}         │`);
   console.log(`  │  Port: ${String(PORT).padEnd(43)}│`);
   console.log(`  ├──────────────────────────────────────────────────┤`);
-  console.log(`  │  GET  /health                                    │`);
-  console.log(`  │  GET  /api/ticker/:symbol                        │`);
-  console.log(`  │  GET  /api/tickers            ← top 20 live      │`);
-  console.log(`  │  GET  /api/top50              ← 50 symbols       │`);
-  console.log(`  │  GET  /api/ohlcv/:symbol/:tf/:limit              │`);
-  console.log(`  │  GET  /api/orderbook/:symbol                     │`);
-  console.log(`  │  GET  /api/analysis/:symbol                      │`);
-  console.log(`  │  GET  /api/analysis/batch/:s1,s2,s3              │`);
-  console.log(`  │  GET  /api/portfolio/scan     ← scan all 50      │`);
-  console.log(`  │  POST /api/backtest                              │`);
-  console.log(`  │  POST /api/pipeline            ← train+test      │`);
-  console.log(`  │  WS   /ws                      ← live BTC feed   │`);
+  console.log(`  │  Auth:   /api/auth/{register,login,me}           │`);
+  console.log(`  │  Wallet: /api/wallet/{deposit,withdraw,transfer} │`);
+  console.log(`  │  M-Pesa: /api/mpesa/deposit                     │`);
+  console.log(`  │  Keys:   /api/keys/{add,test,delete}             │`);
+  console.log(`  │  Trade:  /api/trading/{config,analyze,execute}   │`);
+  console.log(`  │  Market: /api/{ticker,tickers,ohlcv,portfolio}   │`);
+  console.log(`  │  AI:     /api/ai/analyze                        │`);
+  console.log(`  │  WS:     /ws                    ← live BTC feed │`);
   console.log(`  └──────────────────────────────────────────────────┘\n`);
 });

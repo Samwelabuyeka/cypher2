@@ -1,286 +1,1170 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cypher AI Trading Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0e17;--card:#111827;--border:#1f2937;--text:#e5e7eb;--dim:#6b7280;--green:#10b981;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;--yellow:#f59e0b}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',monospace;overflow-x:hidden}
-.header{background:linear-gradient(135deg,#0f172a,#1e1b4b);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
-.header h1{font-size:18px;color:var(--text);display:flex;align-items:center;gap:10px}
-.header h1 span{color:var(--purple);font-weight:800}
-.header .status{display:flex;gap:16px;font-size:12px}
-.header .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.grid{display:grid;grid-template-columns:1fr 320px;grid-template-rows:auto 1fr;gap:1px;background:var(--border);height:calc(100vh - 52px)}
-.grid>div{background:var(--bg);overflow:auto}
-.chart-panel{grid-row:1/3}
-.sidebar{grid-row:1/3;display:flex;flex-direction:column;gap:1px;background:var(--border)}
-.sidebar>div{background:var(--bg);padding:12px;flex:1;min-height:0;overflow:auto}
-.panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px}
-.symbol-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-.sym{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;cursor:pointer;transition:all .15s}
-.sym:hover{border-color:var(--purple);transform:translateY(-1px)}
-.sym .name{font-weight:700;color:var(--text)}
-.sym .price{color:var(--text);font-size:13px;margin:2px 0}
-.sym .change{font-size:10px;font-weight:600}
-.sym .change.up{color:var(--green)}
-.sym .change.down{color:var(--red)}
-.sym .signal{font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;margin-top:4px;display:inline-block}
-.signal.BUY{background:rgba(16,185,129,.15);color:var(--green)}
-.signal.SELL{background:rgba(239,68,68,.15);color:var(--red)}
-.signal.HOLD{background:rgba(107,114,128,.15);color:var(--dim)}
-.trade-log{font-size:11px}
-.trade-entry{padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
-.trade-entry:last-child{border:none}
-.trade-icon{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
-.trade-icon.buy{background:rgba(16,185,129,.15);color:var(--green)}
-.trade-icon.sell{background:rgba(239,68,68,.15);color:var(--red)}
-.trade-info{flex:1}
-.trade-info .sym{font-weight:600;font-size:12px}
-.trade-info .detail{color:var(--dim);font-size:10px}
-.wallet-balance{text-align:center;padding:16px 0}
-.wallet-balance .amount{font-size:28px;font-weight:800;color:var(--text)}
-.wallet-balance .label{font-size:11px;color:var(--dim);margin-top:4px}
-.wallet-positions{margin-top:8px}
-.pos{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
-.pos:last-child{border:none}
-.pos .name{font-weight:600}
-.pos .pnl{font-weight:600}
-.pos .pnl.up{color:var(--green)}
-.pos .pnl.down{color:var(--red)}
-.controls{display:flex;gap:8px;margin-bottom:12px}
-.btn{padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text);font-size:11px;cursor:pointer;font-weight:600;transition:all .15s}
-.btn:hover{border-color:var(--purple);background:#1e1b4b}
-.btn.active{background:var(--purple);border-color:var(--purple);color:#fff}
-.log-line{font-size:10px;color:var(--dim);padding:2px 0;font-family:monospace}
-.log-line .time{color:var(--purple)}
-.log-line .action{color:var(--green)}
-.log-line .warn{color:var(--yellow)}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cypher - Crypto Trading Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cypher: { 50:'#f0f9ff', 100:'#e0f2fe', 200:'#bae6fd', 300:'#7dd3fc', 400:'#38bdf8', 500:'#0ea5e9', 600:'#0284c7', 700:'#0369a1', 800:'#075985', 900:'#0c4a6e' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    .fade-in { animation: fadeIn 0.25s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .pulse-green { animation: pulseG 2s infinite; }
+    @keyframes pulseG { 0%,100%{opacity:1} 50%{opacity:.6} }
+    .toast { position:fixed; bottom:24px; right:24px; z-index:9999; transform:translateY(120%); transition:transform .3s ease; }
+    .toast.show { transform:translateY(0); }
+    .tradingview-widget-container { height: 100%; }
+    input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0px 1000px #1f2937 inset; transition: background-color 5000s ease-in-out 0s;
+    }
+  </style>
 </head>
-<body>
-<div class="header">
-  <h1><span>CYPHER</span> AI Trading Engine</h1>
-  <div class="status">
-    <span><span class="dot"></span>LIVE BINANCE</span>
-    <span id="currencies">50 CURRENCIES</span>
-    <span id="clock"></span>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+  <!-- Toast Container -->
+  <div id="toast" class="toast bg-gray-800 border border-gray-700 rounded-lg px-5 py-3 shadow-2xl flex items-center gap-3">
+    <span id="toast-icon" class="text-lg"></span>
+    <span id="toast-msg" class="text-sm"></span>
   </div>
-</div>
-<div class="grid">
-  <div class="chart-panel">
-    <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
-      <div class="controls">
-        <button class="btn active" onclick="setSymbol('BTC')">BTC</button>
-        <button class="btn" onclick="setSymbol('ETH')">ETH</button>
-        <button class="btn" onclick="setSymbol('SOL')">SOL</button>
-        <button class="btn" onclick="setSymbol('BNB')">BNB</button>
-        <button class="btn" onclick="setSymbol('XRP')">XRP</button>
+
+  <!-- Auth Screen -->
+  <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gray-900 px-4">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 mb-3">
+          <svg class="w-10 h-10 text-cypher-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+          <span class="text-3xl font-extrabold tracking-tight">Cypher</span>
+        </div>
+        <p class="text-gray-400 text-sm">Intelligent Crypto Trading Platform</p>
       </div>
-      <div class="controls">
-        <button class="btn" onclick="setTimeframe('1h')">1H</button>
-        <button class="btn active" onclick="setTimeframe('4h')">4H</button>
-        <button class="btn" onclick="setTimeframe('1d')">1D</button>
-        <button class="btn" onclick="setTimeframe('1w')">1W</button>
+
+      <div class="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl overflow-hidden">
+        <div class="flex">
+          <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-3.5 text-sm font-semibold border-b-2 border-cypher-500 text-cypher-400 transition">Login</button>
+          <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-3.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="form-login" class="p-6 space-y-4" onsubmit="handleLogin(event)">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
+            <input id="login-email" type="email" required placeholder="you@example.com"
+              class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500 focus:border-transparent placeholder-gray-500 transition" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
+            <input id="login-password" type="password" required placeholder="••••••••"
+              class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500 focus:border-transparent placeholder-gray-500 transition" />
+          </div>
+          <button type="submit" id="login-btn"
+            class="w-full bg-cypher-600 hover:bg-cypher-500 text-white font-semibold py-2.5 rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+            Sign In
+          </button>
+          <p id="login-error" class="text-red-400 text-xs text-center hidden"></p>
+        </form>
+
+        <!-- Register Form -->
+        <form id="form-register" class="p-6 space-y-4 hidden" onsubmit="handleRegister(event)">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Full Name</label>
+            <input id="reg-name" type="text" required placeholder="John Doe"
+              class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500 focus:border-transparent placeholder-gray-500 transition" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
+            <input id="reg-email" type="email" required placeholder="you@example.com"
+              class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500 focus:border-transparent placeholder-gray-500 transition" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Phone (M-Pesa)</label>
+            <input id="reg-phone" type="tel" required placeholder="07XXXXXXXX or 254XXXXXXXXX"
+              class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500 focus:border-transparent placeholder-gray-500 transition" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
+            <input id="reg-password" type="password" required minlength="8" placeholder="Min 8 characters"
+              class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500 focus:border-transparent placeholder-gray-500 transition" />
+          </div>
+          <button type="submit" id="register-btn"
+            class="w-full bg-cypher-600 hover:bg-cypher-500 text-white font-semibold py-2.5 rounded-lg text-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+            Create Account
+          </button>
+          <p id="register-error" class="text-red-400 text-xs text-center hidden"></p>
+        </form>
       </div>
-      <div style="flex:1"></div>
-      <div id="chart-price" style="font-size:20px;font-weight:700">--</div>
-      <div id="chart-change" style="font-size:12px;margin-left:8px">--</div>
     </div>
-    <div id="chart" style="height:calc(100% - 52px)"></div>
   </div>
-  <div class="sidebar">
-    <div>
-      <div class="panel-title">AI Signal Scan (Top 50)</div>
-      <div id="portfolio-grid" class="symbol-grid">Loading...</div>
-    </div>
-    <div>
-      <div class="panel-title">Wallet & Positions</div>
-      <div class="wallet-balance">
-        <div class="amount" id="wallet-total">$10,000.00</div>
-        <div class="label">Paper Trading Balance</div>
+
+  <!-- App Shell -->
+  <div id="app-shell" class="hidden h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 px-4 sm:px-6 h-14 flex items-center justify-between shrink-0 z-20">
+      <div class="flex items-center gap-3">
+        <button id="sidebar-toggle" onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+        <div class="flex items-center gap-2">
+          <svg class="w-6 h-6 text-cypher-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+          <span class="text-lg font-bold tracking-tight hidden sm:inline">Cypher</span>
+        </div>
       </div>
-      <div class="wallet-positions" id="positions">No open positions</div>
-    </div>
-    <div>
-      <div class="panel-title">Live Trade Log</div>
-      <div class="trade-log" id="trade-log">
-        <div class="trade-entry"><div class="trade-icon buy">+</div><div class="trade-info"><div class="sym">System initialized</div><div class="detail">Waiting for signals...</div></div></div>
+      <div class="flex items-center gap-4">
+        <div id="btc-price" class="hidden sm:flex items-center gap-2 bg-gray-700/50 rounded-lg px-3 py-1.5">
+          <span class="w-2 h-2 rounded-full bg-green-400 pulse-green"></span>
+          <span class="text-xs text-gray-400">BTC</span>
+          <span id="btc-price-val" class="text-sm font-semibold text-green-400">$--</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-cypher-600 flex items-center justify-center text-sm font-bold" id="user-avatar">?</div>
+          <span class="text-sm font-medium hidden sm:inline" id="user-name">Guest</span>
+          <button onclick="handleLogout()" class="text-gray-400 hover:text-red-400 transition p-1" title="Logout">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
-    <div>
-      <div class="panel-title">AI Engine Log</div>
-      <div id="ai-log">
-        <div class="log-line"><span class="time">[boot]</span> <span class="action">Strategy engine loaded</span> — 6 strategies active</div>
-        <div class="log-line"><span class="time">[boot]</span> <span class="action">Ensemble voting enabled</span></div>
-        <div class="log-line"><span class="time">[boot]</span> Portfolio scanner ready for 50 symbols</div>
-      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+
+      <!-- Sidebar -->
+      <aside id="sidebar" class="w-56 bg-gray-800 border-r border-gray-700 flex flex-col shrink-0 lg:relative absolute inset-y-0 left-0 z-30 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
+        <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+          <button onclick="navigateTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+            Dashboard
+          </button>
+          <button onclick="navigateTo('trading')" data-nav="trading" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+            Trading
+          </button>
+          <button onclick="navigateTo('wallet')" data-nav="wallet" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"/></svg>
+            Wallet
+          </button>
+          <button onclick="navigateTo('settings')" data-nav="settings" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Settings
+          </button>
+        </nav>
+        <div class="p-3 border-t border-gray-700">
+          <div class="bg-gray-700/50 rounded-lg px-3 py-2.5 text-xs text-gray-400">
+            <p class="font-medium text-gray-300 mb-1">Cypher AI</p>
+            <p>Intelligent trading powered by real-time analysis</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Sidebar overlay for mobile -->
+      <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-20 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+      <!-- Main Content -->
+      <main class="flex-1 overflow-y-auto">
+
+        <!-- Dashboard Section -->
+        <section id="page-dashboard" class="page p-4 sm:p-6 space-y-6 fade-in">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold">Dashboard</h1>
+              <p class="text-gray-400 text-sm mt-1">Portfolio overview and market summary</p>
+            </div>
+            <button onclick="refreshDashboard()" class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
+              Refresh
+            </button>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Total Balance</p>
+              <p class="text-2xl font-bold mt-2" id="stat-balance">$0.00</p>
+              <p class="text-xs text-gray-500 mt-1">Across all wallets</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Today's P&L</p>
+              <p class="text-2xl font-bold mt-2" id="stat-pnl">$0.00</p>
+              <p class="text-xs text-gray-500 mt-1">Realized + Unrealized</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Active Trades</p>
+              <p class="text-2xl font-bold mt-2" id="stat-trades">0</p>
+              <p class="text-xs text-gray-500 mt-1">Open positions</p>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">AI Status</p>
+              <p class="text-2xl font-bold mt-2" id="stat-ai">Off</p>
+              <p class="text-xs text-gray-500 mt-1">Auto-trading</p>
+            </div>
+          </div>
+
+          <!-- Market Tickers -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
+              <h2 class="font-semibold">Top Market Tickers</h2>
+              <button onclick="loadTickers()" class="text-xs text-cypher-400 hover:text-cypher-300 transition">Refresh</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-xs text-gray-400 border-b border-gray-700">
+                    <th class="text-left px-5 py-3 font-medium">Pair</th>
+                    <th class="text-right px-5 py-3 font-medium">Price</th>
+                    <th class="text-right px-5 py-3 font-medium">24h Change</th>
+                    <th class="text-right px-5 py-3 font-medium">24h Volume</th>
+                  </tr>
+                </thead>
+                <tbody id="tickers-body">
+                  <tr><td colspan="4" class="text-center py-8 text-gray-500">Loading market data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-700">
+              <h2 class="font-semibold">Recent Activity</h2>
+            </div>
+            <div id="recent-activity" class="divide-y divide-gray-700">
+              <div class="px-5 py-6 text-center text-gray-500 text-sm">No recent activity</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trading Section -->
+        <section id="page-trading" class="page p-4 sm:p-6 space-y-6 fade-in hidden">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 class="text-2xl font-bold">Trading</h1>
+              <p class="text-gray-400 text-sm mt-1">Charts, AI analysis, and trade execution</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 cursor-pointer">
+                <input type="checkbox" id="auto-trade-toggle" class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-cypher-500 focus:ring-cypher-500 focus:ring-offset-0" onchange="toggleAutoTrade(this.checked)" />
+                <span class="text-sm font-medium">AI Auto-Trade</span>
+              </label>
+              <button onclick="analyzeMarket()" class="bg-purple-600 hover:bg-purple-500 text-sm px-4 py-2 rounded-lg transition font-medium">AI Analyze</button>
+              <button onclick="executeAIDecisions()" class="bg-green-600 hover:bg-green-500 text-sm px-4 py-2 rounded-lg transition font-medium">Execute Trades</button>
+            </div>
+          </div>
+
+          <!-- Symbol Selector -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <div class="flex items-center gap-3 flex-wrap">
+              <label class="text-sm text-gray-400">Symbol:</label>
+              <select id="chart-symbol" onchange="changeChartSymbol()" class="bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+                <option value="BINANCE:ETHUSDT">ETH/USDT</option>
+                <option value="BINANCE:BNBUSDT">BNB/USDT</option>
+                <option value="BINANCE:SOLUSDT">SOL/USDT</option>
+                <option value="BINANCE:XRPUSDT">XRP/USDT</option>
+                <option value="BINANCE:ADAUSDT">ADA/USDT</option>
+                <option value="BINANCE:DOGEUSDT">DOGE/USDT</option>
+                <option value="BINANCE:DOTUSDT">DOT/USDT</option>
+                <option value="BINANCE:AVAXUSDT">AVAX/USDT</option>
+                <option value="BINANCE:MATICUSDT">MATIC/USDT</option>
+                <option value="BINANCE:LINKUSDT">LINK/USDT</option>
+                <option value="BINANCE:ATOMUSDT">ATOM/USDT</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden" style="height:480px;">
+            <div id="tradingview_chart_container" class="w-full h-full"></div>
+          </div>
+
+          <!-- AI Analysis Panel -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <h3 class="font-semibold mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+                AI Decision Engine
+              </h3>
+              <div id="ai-analysis" class="space-y-2 text-sm text-gray-400 max-h-64 overflow-y-auto">
+                <p>Click "AI Analyze" to run market analysis...</p>
+              </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <h3 class="font-semibold mb-3">Quick Trade</h3>
+              <div class="space-y-3">
+                <div>
+                  <label class="text-xs text-gray-400">Pair</label>
+                  <select id="trade-pair" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                    <option value="BTCUSDT">BTC/USDT</option>
+                    <option value="ETHUSDT">ETH/USDT</option>
+                    <option value="BNBUSDT">BNB/USDT</option>
+                    <option value="SOLUSDT">SOL/USDT</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Amount (USDT)</label>
+                  <input id="trade-amount" type="number" min="10" step="1" value="100" placeholder="100"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="placeTrade('buy')" class="flex-1 bg-green-600 hover:bg-green-500 py-2.5 rounded-lg text-sm font-semibold transition">Buy</button>
+                  <button onclick="placeTrade('sell')" class="flex-1 bg-red-600 hover:bg-red-500 py-2.5 rounded-lg text-sm font-semibold transition">Sell</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Wallet Section -->
+        <section id="page-wallet" class="page p-4 sm:p-6 space-y-6 fade-in hidden">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold">Wallet</h1>
+              <p class="text-gray-400 text-sm mt-1">Manage your crypto assets</p>
+            </div>
+            <button onclick="loadWallet()" class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded-lg transition">Refresh</button>
+          </div>
+
+          <!-- Wallet Cards -->
+          <div id="wallet-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="text-gray-500 text-sm col-span-full text-center py-8">Loading wallets...</div>
+          </div>
+
+          <!-- Action Panels -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            <!-- M-Pesa Deposit -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <h3 class="font-semibold mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                M-Pesa Deposit (KES)
+              </h3>
+              <form onsubmit="handleMpesaDeposit(event)" class="space-y-3">
+                <div>
+                  <label class="text-xs text-gray-400">Phone Number</label>
+                  <input id="mpesa-phone" type="tel" required placeholder="0712345678 or 254712345678"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Amount (KES)</label>
+                  <input id="mpesa-amount" type="number" min="10" required placeholder="1000"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+                </div>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-500 py-2.5 rounded-lg text-sm font-semibold transition">Deposit via M-Pesa</button>
+              </form>
+            </div>
+
+            <!-- Crypto Deposit -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <h3 class="font-semibold mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-cypher-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m3-3H9m6 0l-3-3m3 3l-3 3"/></svg>
+                Crypto Deposit
+              </h3>
+              <form onsubmit="handleCryptoDeposit(event)" class="space-y-3">
+                <div>
+                  <label class="text-xs text-gray-400">Currency</label>
+                  <select id="deposit-currency" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                    <option value="USDT">USDT</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="BNB">BNB</option>
+                    <option value="SOL">SOL</option>
+                    <option value="KES">KES</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Amount</label>
+                  <input id="deposit-amount" type="number" min="0.0001" step="any" required placeholder="0.01"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+                </div>
+                <button type="submit" class="w-full bg-cypher-600 hover:bg-cypher-500 py-2.5 rounded-lg text-sm font-semibold transition">Deposit</button>
+              </form>
+            </div>
+
+            <!-- Withdraw -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+              <h3 class="font-semibold mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-3h6m-3 3V9m0 0l3 3m-3-3l-3 3"/></svg>
+                Withdraw
+              </h3>
+              <form onsubmit="handleWithdraw(event)" class="space-y-3">
+                <div>
+                  <label class="text-xs text-gray-400">Currency</label>
+                  <select id="withdraw-currency" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                    <option value="USDT">USDT</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="BNB">BNB</option>
+                    <option value="SOL">SOL</option>
+                    <option value="KES">KES</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Amount</label>
+                  <input id="withdraw-amount" type="number" min="0.0001" step="any" required placeholder="0.01"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+                </div>
+                <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 py-2.5 rounded-lg text-sm font-semibold transition">Withdraw</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Transfer -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+              Transfer Between Currencies
+            </h3>
+            <form onsubmit="handleTransfer(event)" class="flex flex-col sm:flex-row items-end gap-3">
+              <div class="flex-1 w-full sm:w-auto">
+                <label class="text-xs text-gray-400">From</label>
+                <select id="transfer-from" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                  <option value="USDT">USDT</option>
+                  <option value="BTC">BTC</option>
+                  <option value="ETH">ETH</option>
+                  <option value="BNB">BNB</option>
+                  <option value="SOL">SOL</option>
+                  <option value="KES">KES</option>
+                </select>
+              </div>
+              <div class="flex items-center pb-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+              </div>
+              <div class="flex-1 w-full sm:w-auto">
+                <label class="text-xs text-gray-400">To</label>
+                <select id="transfer-to" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                  <option value="BTC">BTC</option>
+                  <option value="USDT">USDT</option>
+                  <option value="ETH">ETH</option>
+                  <option value="BNB">BNB</option>
+                  <option value="SOL">SOL</option>
+                  <option value="KES">KES</option>
+                </select>
+              </div>
+              <div class="flex-1 w-full sm:w-auto">
+                <label class="text-xs text-gray-400">Amount</label>
+                <input id="transfer-amount" type="number" min="0.0001" step="any" required placeholder="0.01"
+                  class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+              </div>
+              <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 py-2.5 px-6 rounded-lg text-sm font-semibold transition whitespace-nowrap">Transfer</button>
+            </form>
+          </div>
+
+          <!-- Transactions -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-700">
+              <h2 class="font-semibold">Transaction History</h2>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-xs text-gray-400 border-b border-gray-700">
+                    <th class="text-left px-5 py-3 font-medium">Date</th>
+                    <th class="text-left px-5 py-3 font-medium">Type</th>
+                    <th class="text-left px-5 py-3 font-medium">Currency</th>
+                    <th class="text-right px-5 py-3 font-medium">Amount</th>
+                    <th class="text-right px-5 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="transactions-body">
+                  <tr><td colspan="5" class="text-center py-8 text-gray-500">No transactions yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="page-settings" class="page p-4 sm:p-6 space-y-6 fade-in hidden">
+          <div>
+            <h1 class="text-2xl font-bold">Settings</h1>
+            <p class="text-gray-400 text-sm mt-1">API keys, trading configuration, and preferences</p>
+          </div>
+
+          <!-- Trading Config -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-cypher-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
+              Trading Configuration
+            </h3>
+            <form id="trading-config-form" onsubmit="saveTradingConfig(event)" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label class="text-xs text-gray-400">Max Daily Spend (USDT)</label>
+                  <input id="cfg-max-spend" type="number" min="1" value="500" placeholder="500"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Risk Level</label>
+                  <select id="cfg-risk" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                    <option value="conservative">Conservative</option>
+                    <option value="moderate" selected>Moderate</option>
+                    <option value="aggressive">Aggressive</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Auto-Trade</label>
+                  <select id="cfg-auto-trade" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-400">Trading Enabled</label>
+                  <select id="cfg-enabled" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="bg-cypher-600 hover:bg-cypher-500 text-sm px-5 py-2.5 rounded-lg font-semibold transition">Save Configuration</button>
+            </form>
+          </div>
+
+          <!-- API Keys -->
+          <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+            <h3 class="font-semibold mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
+              Exchange API Keys
+            </h3>
+
+            <!-- Add Key Form -->
+            <form id="add-key-form" onsubmit="handleAddKey(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+              <div>
+                <label class="text-xs text-gray-400">Exchange</label>
+                <select id="key-exchange" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                  <option value="binance">Binance</option>
+                  <option value="coinbase">Coinbase</option>
+                  <option value="kraken">Kraken</option>
+                  <option value="kucoin">KuCoin</option>
+                  <option value="bybit">Bybit</option>
+                  <option value="okx">OKX</option>
+                  <option value="gate">Gate.io</option>
+                  <option value="mxc">MEXC</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-400">API Key</label>
+                <input id="key-api" type="text" required placeholder="Your API key"
+                  class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-400">API Secret</label>
+                <input id="key-secret" type="password" required placeholder="Your API secret"
+                  class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-400">Passphrase (optional)</label>
+                <input id="key-passphrase" type="password" placeholder="If required"
+                  class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-400">Environment</label>
+                <select id="key-testnet" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-cypher-500">
+                  <option value="false">Mainnet</option>
+                  <option value="true">Testnet</option>
+                </select>
+              </div>
+              <div class="flex items-end gap-2">
+                <button type="submit" class="bg-cypher-600 hover:bg-cypher-500 py-2.5 px-5 rounded-lg text-sm font-semibold transition">Add Key</button>
+                <button type="button" onclick="testKeyConnection()" class="bg-gray-600 hover:bg-gray-500 py-2.5 px-5 rounded-lg text-sm font-medium transition">Test</button>
+              </div>
+            </form>
+
+            <!-- Keys Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-xs text-gray-400 border-b border-gray-700">
+                    <th class="text-left px-5 py-3 font-medium">Exchange</th>
+                    <th class="text-left px-5 py-3 font-medium">API Key</th>
+                    <th class="text-left px-5 py-3 font-medium">Environment</th>
+                    <th class="text-left px-5 py-3 font-medium">Status</th>
+                    <th class="text-right px-5 py-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="keys-body">
+                  <tr><td colspan="5" class="text-center py-8 text-gray-500">No API keys configured</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
     </div>
   </div>
-</div>
-<script>
-const API = '';
-let currentSymbol = 'BTC';
-let currentTimeframe = '4h';
-let chart, candleSeries, volumeSeries, sma20Series, sma50Series, buyMarkers = [], sellMarkers = [];
-let ws;
 
-function initChart() {
-  const el = document.getElementById('chart');
-  chart = LightweightCharts.createChart(el, {
-    layout: { background: { color: '#0a0e17' }, textColor: '#9ca3af', fontSize: 11 },
-    grid: { vertLines: { color: '#1f2937' }, horzLines: { color: '#1f2937' } },
-    crosshair: { mode: 0 },
-    rightPriceScale: { borderColor: '#1f2937' },
-    timeScale: { borderColor: '#1f2937', timeVisible: true },
-  });
-  candleSeries = chart.addCandlestickSeries({
-    upColor: '#10b981', downColor: '#ef4444',
-    borderUpColor: '#10b981', borderDownColor: '#ef4444',
-    wickUpColor: '#10b981', wickDownColor: '#ef4444',
-  });
-  volumeSeries = chart.addHistogramSeries({
-    color: '#3b82f6', priceFormat: { type: 'volume' },
-    priceScaleId: '', scaleMargins: { top: 0.8, bottom: 0 },
-  });
-  sma20Series = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-  sma50Series = chart.addLineSeries({ color: '#8b5cf6', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-  new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth, height: el.clientHeight })).observe(el);
-}
+  <script>
+  (function() {
+    'use strict';
 
-function setSymbol(s) {
-  currentSymbol = s;
-  document.querySelectorAll('.controls:first-child .btn').forEach(b => { b.classList.toggle('active', b.textContent === s); });
-  loadChart();
-}
-function setTimeframe(tf) {
-  currentTimeframe = tf;
-  document.querySelectorAll('.controls:nth-child(2) .btn').forEach(b => { b.classList.toggle('active', b.textContent.toLowerCase() === tf); });
-  loadChart();
-}
+    const API = '';
+    let state = {
+      token: localStorage.getItem('cypher_token') || null,
+      user: null,
+      wallets: [],
+      keys: [],
+      tradingConfig: null,
+      currentPage: 'dashboard',
+      ws: null,
+      tvWidget: null
+    };
 
-async function loadChart() {
-  try {
-    const res = await fetch(`${API}/api/ohlcv/${currentSymbol}/${currentTimeframe}/200`);
-    const json = await res.json();
-    if (!json.ok) return;
-    const candles = json.data;
-    const closes = candles.map(c => c.close);
-    const highs = candles.map(c => c.high);
-    const lows = candles.map(c => c.low);
-    const vols = candles.map(c => c.volume);
+    /* ─── Utilities ─── */
+    function $(id) { return document.getElementById(id); }
+    function show(id) { id.classList.remove('hidden'); }
+    function hide(id) { id.classList.add('hidden'); }
 
-    // Candlestick data
-    candleSeries.setData(candles.map(c => ({ time: Math.floor(c.timestamp / 1000), open: c.open, high: c.high, low: c.low, close: c.close })));
-    volumeSeries.setData(candles.map(c => ({ time: Math.floor(c.timestamp / 1000), value: c.volume, color: c.close >= c.open ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' })));
+    function toast(msg, type) {
+      const el = $('toast');
+      const icon = $('toast-icon');
+      const text = $('toast-msg');
+      text.textContent = msg;
+      if (type === 'success') { icon.textContent = '✓'; icon.className = 'text-green-400'; }
+      else if (type === 'error') { icon.textContent = '✗'; icon.className = 'text-red-400'; }
+      else { icon.textContent = 'ℹ'; icon.className = 'text-cypher-400'; }
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3500);
+    }
 
-    // SMA lines
-    sma20Series.setData(computeSMA(closes, 20).map((v, i) => v ? { time: Math.floor(candles[i].timestamp / 1000), value: v } : null).filter(Boolean));
-    sma50Series.setData(computeSMA(closes, 50).map((v, i) => v ? { time: Math.floor(candles[i].timestamp / 1000), value: v } : null).filter(Boolean));
-
-    // Generate signals
-    buyMarkers = []; sellMarkers = [];
-    const sma10 = computeSMA(closes, 10);
-    const sma30 = computeSMA(closes, 30);
-    const rsi14 = computeRSI(closes, 14);
-    for (let i = 1; i < candles.length; i++) {
-      if (!sma10[i] || !sma30[i] || !sma10[i-1] || !sma30[i-1]) continue;
-      const gc = sma10[i-1] <= sma30[i-1] && sma10[i] > sma30[i];
-      const dc = sma10[i-1] >= sma30[i-1] && sma10[i] < sma30[i];
-      if (gc && (!rsi14[i] || rsi14[i] < 70)) {
-        buyMarkers.push({ time: Math.floor(candles[i].timestamp / 1000), position: 'belowBar', color: '#10b981', shape: 'arrowUp', text: 'BUY' });
-      } else if (dc) {
-        sellMarkers.push({ time: Math.floor(candles[i].timestamp / 1000), position: 'aboveBar', color: '#ef4444', shape: 'arrowDown', text: 'SELL' });
+    async function api(path, opts) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+      try {
+        const res = await fetch(API + path, { ...opts, headers: { ...headers, ...(opts && opts.headers || {}) } });
+        if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data && data.error || data && data.message || 'Request failed');
+        return data;
+      } catch (e) {
+        throw e;
       }
     }
-    candleSeries.setMarkers([...buyMarkers, ...sellMarkers].sort((a, b) => a.time - b.time));
 
-    const last = candles[candles.length - 1];
-    const prev = candles[candles.length - 7] || candles[0];
-    const change = ((last.close - prev.close) / prev.close * 100).toFixed(2);
-    document.getElementById('chart-price').textContent = `$${last.close.toLocaleString()}`;
-    const ch = document.getElementById('chart-change');
-    ch.textContent = `${change >= 0 ? '+' : ''}${change}% (7d)`;
-    ch.style.color = change >= 0 ? 'var(--green)' : 'var(--red)';
-  } catch(e) { console.error('Chart load error:', e); }
-}
+    function formatMoney(n) {
+      if (n == null) return '$0.00';
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
-function computeSMA(data, period) {
-  const out = new Array(data.length).fill(null);
-  let sum = 0;
-  for (let i = 0; i < data.length; i++) {
-    sum += data[i];
-    if (i >= period) sum -= data[i - period];
-    if (i >= period - 1) out[i] = sum / period;
-  }
-  return out;
-}
-function computeRSI(data, period = 14) {
-  const out = new Array(data.length).fill(null);
-  if (data.length < period + 1) return out;
-  let gain = 0, loss = 0;
-  for (let i = 1; i <= period; i++) { const d = data[i] - data[i-1]; if (d > 0) gain += d; else loss -= d; }
-  let ag = gain / period, al = loss / period;
-  out[period] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-  for (let i = period + 1; i < data.length; i++) {
-    const d = data[i] - data[i-1];
-    ag = (ag * (period - 1) + Math.max(d, 0)) / period;
-    al = (al * (period - 1) + Math.max(-d, 0)) / period;
-    out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-  }
-  return out;
-}
+    function maskKey(k) {
+      if (!k) return '—';
+      if (k.length <= 8) return '••••••••';
+      return k.substring(0, 4) + '••••' + k.substring(k.length - 4);
+    }
 
-// Portfolio scan
-async function scanPortfolio() {
-  const grid = document.getElementById('portfolio-grid');
-  grid.innerHTML = '<div style="grid-column:1/-1;color:var(--dim);font-size:11px">Scanning 50 currencies...</div>';
-  try {
-    const res = await fetch(`${API}/api/portfolio/scan`);
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error);
-    grid.innerHTML = json.data.filter(d => !d.error).map(d => `
-      <div class="sym" onclick="setSymbol('${d.symbol}')">
-        <div class="name">${d.symbol}</div>
-        <div class="price">$${(d.price || 0).toLocaleString(undefined, {maximumFractionDigits: d.price > 100 ? 2 : 6})}</div>
-        <div class="change ${(d.change7d||0) >= 0 ? 'up' : 'down'}">${(d.change7d||0) >= 0 ? '+' : ''}${(d.change7d||0).toFixed(2)}%</div>
-        <div class="signal ${d.signal}">${d.signal}</div>
-      </div>
-    `).join('');
-    document.getElementById('currencies').textContent = `${json.summary.total} SCANNED`;
-  } catch(e) { grid.innerHTML = `<div style="color:var(--red);font-size:11px">Error: ${e.message}</div>`; }
-}
+    /* ─── Auth ─── */
+    window.switchAuthTab = function(tab) {
+      $('tab-login').className = tab === 'login'
+        ? 'flex-1 py-3.5 text-sm font-semibold border-b-2 border-cypher-500 text-cypher-400 transition'
+        : 'flex-1 py-3.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition';
+      $('tab-register').className = tab === 'register'
+        ? 'flex-1 py-3.5 text-sm font-semibold border-b-2 border-cypher-500 text-cypher-400 transition'
+        : 'flex-1 py-3.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-white transition';
+      if (tab === 'login') { show($('form-login')); hide($('form-register')); }
+      else { hide($('form-login')); show($('form-register')); }
+    };
 
-// WebSocket
-function connectWS() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
-  ws.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'ticker') {
-        // Update live prices
+    window.handleLogin = async function(e) {
+      e.preventDefault();
+      const btn = $('login-btn');
+      const err = $('login-error');
+      hide(err); btn.disabled = true; btn.textContent = 'Signing in...';
+      try {
+        const data = await api('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: $('login-email').value, password: $('login-password').value })
+        });
+        state.token = data.token;
+        localStorage.setItem('cypher_token', data.token);
+        toast('Welcome back!', 'success');
+        await initApp();
+      } catch (e) {
+        err.textContent = e.message; show(err);
+      } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+    };
+
+    window.handleRegister = async function(e) {
+      e.preventDefault();
+      const btn = $('register-btn');
+      const err = $('register-error');
+      hide(err); btn.disabled = true; btn.textContent = 'Creating account...';
+      try {
+        const data = await api('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: $('reg-email').value,
+            password: $('reg-password').value,
+            fullName: $('reg-name').value,
+            phone: $('reg-phone').value
+          })
+        });
+        state.token = data.token;
+        localStorage.setItem('cypher_token', data.token);
+        toast('Account created!', 'success');
+        await initApp();
+      } catch (e) {
+        err.textContent = e.message; show(err);
+      } finally { btn.disabled = false; btn.textContent = 'Create Account'; }
+    };
+
+    window.handleLogout = function() {
+      state.token = null;
+      state.user = null;
+      localStorage.removeItem('cypher_token');
+      if (state.ws) { state.ws.close(); state.ws = null; }
+      hide($('app-shell')); show($('auth-screen'));
+    };
+
+    /* ─── App Init ─── */
+    async function initApp() {
+      try {
+        const me = await api('/api/auth/me');
+        state.user = me.user || me;
+      } catch (e) {
+        handleLogout(); return;
       }
-    } catch {}
-  };
-  ws.onclose = () => setTimeout(connectWS, 3000);
-}
+      hide($('auth-screen')); show($('app-shell'));
+      $('user-name').textContent = state.user.fullName || state.user.email || 'User';
+      $('user-avatar').textContent = (state.user.fullName || state.user.email || '?')[0].toUpperCase();
+      connectWebSocket();
+      navigateTo('dashboard');
+    }
 
-// Clock
-setInterval(() => {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
-}, 1000);
+    /* ─── Navigation ─── */
+    window.navigateTo = function(page) {
+      state.currentPage = page;
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      const target = $('page-' + page);
+      if (target) target.classList.remove('hidden');
 
-// Init
-initChart();
-loadChart();
-scanPortfolio();
-connectWS();
-setInterval(scanPortfolio, 120000);
-</script>
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.nav === page) {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-gray-700 text-white transition';
+        } else {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition';
+        }
+      });
+
+      if (page === 'dashboard') refreshDashboard();
+      else if (page === 'trading') initTradingView();
+      else if (page === 'wallet') { loadWallet(); loadTransactions(); }
+      else if (page === 'settings') { loadKeys(); loadTradingConfig(); }
+
+      if (window.innerWidth < 1024) {
+        $('sidebar').classList.add('-translate-x-full');
+        $('sidebar-overlay').classList.add('hidden');
+      }
+    };
+
+    window.toggleSidebar = function() {
+      const sb = $('sidebar');
+      const ov = $('sidebar-overlay');
+      sb.classList.toggle('-translate-x-full');
+      ov.classList.toggle('hidden');
+    };
+
+    /* ─── WebSocket ─── */
+    function connectWebSocket() {
+      if (state.ws) state.ws.close();
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      state.ws = new WebSocket(proto + '//' + location.host + '/ws');
+      state.ws.onmessage = function(e) {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.type === 'ticker' && d.symbol === 'BTCUSDT') {
+            $('btc-price-val').textContent = formatMoney(d.price);
+          }
+        } catch (err) {}
+      };
+      state.ws.onclose = function() {
+        setTimeout(connectWebSocket, 5000);
+      };
+      state.ws.onerror = function() {
+        state.ws.close();
+      };
+    }
+
+    /* ─── Dashboard ─── */
+    window.refreshDashboard = async function() {
+      try {
+        const walletData = await api('/api/wallet');
+        state.wallets = walletData.wallets || walletData || [];
+        let total = 0;
+        state.wallets.forEach(w => { total += (parseFloat(w.balance) || 0) * (parseFloat(w.usdValue) || 1); });
+        $('stat-balance').textContent = formatMoney(total);
+        $('stat-ai').textContent = state.tradingConfig && state.tradingConfig.autoTrade ? 'On' : 'Off';
+        $('stat-ai').className = 'text-2xl font-bold mt-2 ' + (state.tradingConfig && state.tradingConfig.autoTrade ? 'text-green-400' : 'text-gray-400');
+      } catch (e) {}
+      loadTickers();
+    };
+
+    window.loadTickers = async function() {
+      try {
+        const data = await api('/api/tickers');
+        const tickers = data.tickers || data || [];
+        const body = $('tickers-body');
+        if (!tickers.length) { body.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">No tickers available</td></tr>'; return; }
+        body.innerHTML = tickers.slice(0, 20).map(t => {
+          const pct = parseFloat(t.priceChangePercent || 0);
+          const color = pct >= 0 ? 'text-green-400' : 'text-red-400';
+          return `<tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
+            <td class="px-5 py-3 font-medium">${t.symbol || '—'}</td>
+            <td class="px-5 py-3 text-right">${formatMoney(t.lastPrice)}</td>
+            <td class="px-5 py-3 text-right ${color}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</td>
+            <td class="px-5 py-3 text-right text-gray-400">${t.volume ? Number(t.volume).toLocaleString() : '—'}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        $('tickers-body').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-500">Failed to load tickers</td></tr>';
+      }
+    };
+
+    /* ─── TradingView ─── */
+    function initTradingView() {
+      if (state.tvWidget) {
+        try { state.tvWidget.remove(); } catch (e) {}
+        state.tvWidget = null;
+      }
+      const container = $('tradingview_chart_container');
+      container.innerHTML = '';
+      const script1 = document.createElement('script');
+      script1.src = 'https://s3.tradingview.com/tv.js';
+      script1.onload = function() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tradingview-widget-container';
+        wrapper.style.height = '100%';
+        const chartDiv = document.createElement('div');
+        chartDiv.id = 'tradingview_chart';
+        chartDiv.style.height = '100%';
+        wrapper.appendChild(chartDiv);
+        container.appendChild(wrapper);
+
+        state.tvWidget = new TradingView.widget({
+          autosize: true,
+          symbol: $('chart-symbol').value,
+          interval: 'D',
+          timezone: 'Etc/UTC',
+          theme: 'dark',
+          style: '1',
+          locale: 'en',
+          toolbar_bg: '#1f2937',
+          enable_publishing: false,
+          allow_symbol_change: true,
+          container_id: 'tradingview_chart',
+          studies: ['MASimple@tv-basicstudies', 'RSI@tv-basicstudies'],
+          show_popup_button: true,
+          popup_width: '1000',
+          popup_height: '650',
+        });
+      };
+      document.head.appendChild(script1);
+    }
+
+    window.changeChartSymbol = function() {
+      if (state.tvWidget) {
+        try { state.tvWidget.remove(); } catch (e) {}
+        state.tvWidget = null;
+      }
+      initTradingView();
+    };
+
+    /* ─── AI Trading ─── */
+    window.toggleAutoTrade = async function(enabled) {
+      try {
+        const cfg = state.tradingConfig || {};
+        await api('/api/trading', { method: 'PUT', body: JSON.stringify({ autoTrade: enabled, enabled: true, maxDailySpend: cfg.maxDailySpend || 500, riskLevel: cfg.riskLevel || 'moderate' }) });
+        state.tradingConfig = { ...cfg, autoTrade: enabled };
+        toast('Auto-trade ' + (enabled ? 'enabled' : 'disabled'), 'success');
+        $('stat-ai').textContent = enabled ? 'On' : 'Off';
+        $('stat-ai').className = 'text-2xl font-bold mt-2 ' + (enabled ? 'text-green-400' : 'text-gray-400');
+      } catch (e) { toast('Failed to update: ' + e.message, 'error'); }
+    };
+
+    window.analyzeMarket = async function() {
+      const el = $('ai-analysis');
+      el.innerHTML = '<p class="text-purple-400">Analyzing market data...</p>';
+      try {
+        const data = await api('/api/trading/analyze');
+        const decisions = data.decisions || data.analysis || data || [];
+        if (Array.isArray(decisions) && decisions.length) {
+          el.innerHTML = decisions.map(d => {
+            const color = d.action === 'buy' ? 'text-green-400' : d.action === 'sell' ? 'text-red-400' : 'text-yellow-400';
+            return `<div class="bg-gray-900 rounded-lg p-3 border border-gray-600">
+              <div class="flex items-center justify-between">
+                <span class="font-medium">${d.symbol || d.pair || '—'}</span>
+                <span class="text-xs font-semibold uppercase ${color}">${d.action || d.signal || 'hold'}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">${d.reason || d.rationale || ''}</p>
+              ${d.confidence ? '<span class="text-xs text-gray-500">Confidence: ' + (d.confidence * 100).toFixed(0) + '%</span>' : ''}
+            </div>`;
+          }).join('');
+        } else {
+          el.innerHTML = '<p class="text-gray-400">' + (data.message || 'No actionable decisions at this time.') + '</p>';
+        }
+      } catch (e) { el.innerHTML = '<p class="text-red-400">Error: ' + e.message + '</p>'; }
+    };
+
+    window.executeAIDecisions = async function() {
+      try {
+        const data = await api('/api/trading/execute', { method: 'POST' });
+        toast('Trades executed: ' + JSON.stringify(data.executed || data.trades || 0), 'success');
+      } catch (e) { toast('Execution failed: ' + e.message, 'error'); }
+    };
+
+    window.placeTrade = async function(side) {
+      const pair = $('trade-pair').value;
+      const amount = $('trade-amount').value;
+      if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
+      try {
+        const data = await api('/api/trading/execute', {
+          method: 'POST',
+          body: JSON.stringify({ action: side, symbol: pair, amount: parseFloat(amount) })
+        });
+        toast(side.toUpperCase() + ' order placed successfully', 'success');
+      } catch (e) { toast('Trade failed: ' + e.message, 'error'); }
+    };
+
+    /* ─── Wallet ─── */
+    window.loadWallet = async function() {
+      try {
+        const data = await api('/api/wallet');
+        state.wallets = data.wallets || data || [];
+        const container = $('wallet-cards');
+        if (!state.wallets.length) {
+          container.innerHTML = '<div class="text-gray-500 text-sm col-span-full text-center py-8">No wallets found</div>';
+          return;
+        }
+        container.innerHTML = state.wallets.map(w => {
+          const bal = parseFloat(w.balance) || 0;
+          const usd = parseFloat(w.usdValue) || bal;
+          const icons = { BTC: '₿', ETH: 'Ξ', BNB: '◆', SOL: '◎', USDT: '$', KES: 'K', USDC: '$', XRP: '✕', DOGE: 'Ð', ADA: '₳', DOT: '●', AVAX: '▲', MATIC: '⬟', LINK: '⬡', ATOM: '⚛' };
+          return `<div class="bg-gray-800 rounded-xl border border-gray-700 p-5 hover:border-gray-600 transition">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg font-bold text-cypher-400">${icons[w.currency || w.symbol] || '●'}</div>
+              <div>
+                <p class="font-semibold">${w.currency || w.symbol || '—'}</p>
+                <p class="text-xs text-gray-400">${w.name || w.currency || '—'}</p>
+              </div>
+            </div>
+            <p class="text-xl font-bold">${bal.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 8 })}</p>
+            <p class="text-sm text-gray-400 mt-1">${formatMoney(usd)}</p>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        $('wallet-cards').innerHTML = '<div class="text-red-400 text-sm col-span-full text-center py-8">Failed to load wallets</div>';
+      }
+    };
+
+    window.loadTransactions = async function() {
+      try {
+        const data = await api('/api/wallet/transactions');
+        const txns = data.transactions || data || [];
+        const body = $('transactions-body');
+        if (!txns.length) { body.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">No transactions yet</td></tr>'; return; }
+        body.innerHTML = txns.slice(0, 20).map(t => {
+          const typeColor = t.type === 'deposit' ? 'text-green-400' : t.type === 'withdrawal' ? 'text-red-400' : 'text-cypher-400';
+          const statusColor = t.status === 'completed' ? 'text-green-400' : t.status === 'pending' ? 'text-yellow-400' : 'text-red-400';
+          return `<tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
+            <td class="px-5 py-3 text-gray-400">${t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}</td>
+            <td class="px-5 py-3 ${typeColor} capitalize">${t.type || '—'}</td>
+            <td class="px-5 py-3 font-medium">${t.currency || '—'}</td>
+            <td class="px-5 py-3 text-right">${parseFloat(t.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</td>
+            <td class="px-5 py-3 text-right capitalize ${statusColor}">${t.status || '—'}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        $('transactions-body').innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Failed to load transactions</td></tr>';
+      }
+    };
+
+    window.handleMpesaDeposit = async function(e) {
+      e.preventDefault();
+      const phone = $('mpesa-phone').value.trim();
+      const amount = $('mpesa-amount').value;
+      if (!/^(\+?254|0)?[17]\d{8}$/.test(phone.replace(/\s/g, ''))) {
+        toast('Invalid Kenyan phone number', 'error'); return;
+      }
+      try {
+        const data = await api('/api/mpesa/deposit', {
+          method: 'POST',
+          body: JSON.stringify({ phone, amount: parseFloat(amount) })
+        });
+        toast(data.message || 'M-Pesa deposit initiated. Check your phone.', 'success');
+        $('mpesa-phone').value = '';
+        $('mpesa-amount').value = '';
+      } catch (e) { toast('Deposit failed: ' + e.message, 'error'); }
+    };
+
+    window.handleCryptoDeposit = async function(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/wallet/deposit', {
+          method: 'POST',
+          body: JSON.stringify({ currency: $('deposit-currency').value, amount: parseFloat($('deposit-amount').value) })
+        });
+        toast(data.message || 'Deposit recorded', 'success');
+        $('deposit-amount').value = '';
+        loadWallet(); loadTransactions();
+      } catch (e) { toast('Deposit failed: ' + e.message, 'error'); }
+    };
+
+    window.handleWithdraw = async function(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/wallet/withdraw', {
+          method: 'POST',
+          body: JSON.stringify({ currency: $('withdraw-currency').value, amount: parseFloat($('withdraw-amount').value) })
+        });
+        toast(data.message || 'Withdrawal submitted', 'success');
+        $('withdraw-amount').value = '';
+        loadWallet(); loadTransactions();
+      } catch (e) { toast('Withdrawal failed: ' + e.message, 'error'); }
+    };
+
+    window.handleTransfer = async function(e) {
+      e.preventDefault();
+      const from = $('transfer-from').value;
+      const to = $('transfer-to').value;
+      if (from === to) { toast('Cannot transfer to same currency', 'error'); return; }
+      try {
+        const data = await api('/api/wallet/transfer', {
+          method: 'POST',
+          body: JSON.stringify({ fromCurrency: from, toCurrency: to, amount: parseFloat($('transfer-amount').value) })
+        });
+        toast(data.message || 'Transfer completed', 'success');
+        $('transfer-amount').value = '';
+        loadWallet(); loadTransactions();
+      } catch (e) { toast('Transfer failed: ' + e.message, 'error'); }
+    };
+
+    /* ─── Settings ─── */
+    window.loadKeys = async function() {
+      try {
+        const data = await api('/api/keys');
+        state.keys = data.api_keys || data.keys || data || [];
+        const body = $('keys-body');
+        if (!state.keys.length) { body.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">No API keys configured</td></tr>'; return; }
+        body.innerHTML = state.keys.map(k => {
+          const envColor = k.isTestnet ? 'text-yellow-400' : 'text-green-400';
+          return `<tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
+            <td class="px-5 py-3 font-medium capitalize">${k.exchange || '—'}</td>
+            <td class="px-5 py-3 font-mono text-xs text-gray-400">${maskKey(k.apiKey)}</td>
+            <td class="px-5 py-3 ${envColor}">${k.isTestnet ? 'Testnet' : 'Mainnet'}</td>
+            <td class="px-5 py-3"><span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span> Active</td>
+            <td class="px-5 py-3 text-right">
+              <button onclick="deleteKey('${k._id || k.id}')" class="text-red-400 hover:text-red-300 text-xs font-medium transition">Delete</button>
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        $('keys-body').innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Failed to load keys</td></tr>';
+      }
+    };
+
+    window.handleAddKey = async function(e) {
+      e.preventDefault();
+      try {
+        await api('/api/keys', {
+          method: 'POST',
+          body: JSON.stringify({
+            exchange: $('key-exchange').value,
+            apiKey: $('key-api').value,
+            apiSecret: $('key-secret').value,
+            passphrase: $('key-passphrase').value || undefined,
+            isTestnet: $('key-testnet').value === 'true'
+          })
+        });
+        toast('API key added', 'success');
+        $('key-api').value = ''; $('key-secret').value = ''; $('key-passphrase').value = '';
+        loadKeys();
+      } catch (e) { toast('Failed to add key: ' + e.message, 'error'); }
+    };
+
+    window.testKeyConnection = async function() {
+      try {
+        const data = await api('/api/keys/test', {
+          method: 'POST',
+          body: JSON.stringify({
+            exchange: $('key-exchange').value,
+            apiKey: $('key-api').value,
+            apiSecret: $('key-secret').value,
+            passphrase: $('key-passphrase').value || undefined,
+            isTestnet: $('key-testnet').value === 'true'
+          })
+        });
+        toast(data.message || 'Connection successful!', 'success');
+      } catch (e) { toast('Connection failed: ' + e.message, 'error'); }
+    };
+
+    window.deleteKey = async function(id) {
+      if (!confirm('Delete this API key?')) return;
+      try {
+        await api('/api/keys/' + id, { method: 'DELETE' });
+        toast('Key deleted', 'success');
+        loadKeys();
+      } catch (e) { toast('Failed to delete: ' + e.message, 'error'); }
+    };
+
+    window.loadTradingConfig = async function() {
+      try {
+        const data = await api('/api/trading');
+        state.tradingConfig = data.trading_config || data || {};
+        const c = state.tradingConfig;
+        if (c.maxDailySpend != null) $('cfg-max-spend').value = c.maxDailySpend;
+        if (c.riskLevel) $('cfg-risk').value = c.riskLevel;
+        if (c.autoTrade != null) $('cfg-auto-trade').value = c.autoTrade.toString();
+        if (c.enabled != null) $('cfg-enabled').value = c.enabled.toString();
+        $('auto-trade-toggle').checked = !!c.autoTrade;
+        $('stat-ai').textContent = c.autoTrade ? 'On' : 'Off';
+        $('stat-ai').className = 'text-2xl font-bold mt-2 ' + (c.autoTrade ? 'text-green-400' : 'text-gray-400');
+      } catch (e) {}
+    };
+
+    window.saveTradingConfig = async function(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/trading', {
+          method: 'PUT',
+          body: JSON.stringify({
+            enabled: $('cfg-enabled').value === 'true',
+            maxDailySpend: parseFloat($('cfg-max-spend').value),
+            riskLevel: $('cfg-risk').value,
+            autoTrade: $('cfg-auto-trade').value === 'true'
+          })
+        });
+        state.tradingConfig = data.trading_config || data || {};
+        $('auto-trade-toggle').checked = !!state.tradingConfig.autoTrade;
+        toast('Trading config saved', 'success');
+      } catch (e) { toast('Failed to save: ' + e.message, 'error'); }
+    };
+
+    /* ─── Init ─── */
+    if (state.token) { initApp(); }
+    else { show($('auth-screen')); }
+  })();
+  </script>
 </body>
 </html>

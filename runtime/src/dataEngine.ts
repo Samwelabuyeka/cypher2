@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import {
   BacktestEngine,
   type BacktestConfig,
@@ -10,8 +11,9 @@ import {
 } from "../../api/lib/backtesting/backtestEngine";
 import { MarketDataService, type Candle } from "./exchangeService";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const DATA_DIR = join(__dirname, "..", "data");
-const CACHE_FILE = join(DATA_DIR, "btc-usdt-1d-10yr.json");
 
 export const market = new MarketDataService(
   true,
