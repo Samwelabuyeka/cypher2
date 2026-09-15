@@ -89,6 +89,17 @@ function initSchema() {
       updatedAt TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (userId) REFERENCES users(id)
     );
+    CREATE TABLE IF NOT EXISTS mpesa_config (
+      userId TEXT PRIMARY KEY,
+      consumerKey TEXT DEFAULT '',
+      consumerSecret TEXT DEFAULT '',
+      shortcode TEXT DEFAULT '',
+      passkey TEXT DEFAULT '',
+      callbackUrl TEXT DEFAULT '',
+      env TEXT DEFAULT 'sandbox',
+      updatedAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (userId) REFERENCES users(id)
+    );
   `);
 }
 
