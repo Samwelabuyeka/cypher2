@@ -9,12 +9,16 @@ import { MarketDataService, type Candle } from "./exchangeService";
 import { runFullPipeline } from "./pipeline";
 import { getDb } from "./db";
 import authRouter from "./auth";
+import { authMiddleware } from "./auth";
 import walletRouter from "./wallet";
 import mpesaRouter from "./mpesa";
 import apiKeysRouter from "./apiKeys";
 import tradingConfigRouter from "./tradingConfig";
 import { runAiCycle } from "./aiTrader";
-import { SUPPORTED_EXCHANGES } from "./exchangeManager";
+import { getRate } from "./rates";
+
+let SUPPORTED_EXCHANGES: string[] = [];
+import("./exchangeManager").then(m => { SUPPORTED_EXCHANGES = m.SUPPORTED_EXCHANGES; });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -227,6 +231,42 @@ app.get("/api/ai/analyze", async (req: any, res) => {
 // ── Dashboard ──────────────────────────────────────────────────────────────
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
+// ── Portfolio & Exchange Rates ─────────────────────────────────────────────
+app.get("/api/rate/:from/:to", async (req, res) => {
+  try {
+    const rate = await getRate(req.params.from, req.params.to);
+    res.json({ ok: true, from: req.params.from, to: req.params.to, rate });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/portfolio/value", authMiddleware, async (req: any, res) => {
+  try {
+    const db = getDb();
+    const wallets = db.prepare("SELECT * FROM wallets WHERE userId = ?").all(req.userId) as any[];
+    let totalUsdt = 0;
+    const breakdown: any[] = [];
+
+    for (const w of wallets) {
+      if (w.balance <= 0) continue;
+      let valueUsdt = 0;
+      if (w.currency === "USDT") {
+        valueUsdt = w.balance;
+      } else {
+        const rate = await getRate(w.currency, "USDT");
+        valueUsdt = w.balance * rate;
+      }
+      totalUsdt += valueUsdt;
+      breakdown.push({ currency: w.currency, balance: w.balance, valueUsdt });
+    }
+
+    res.json({ ok: true, totalUsdt, breakdown });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Start server ───────────────────────────────────────────────────────────
