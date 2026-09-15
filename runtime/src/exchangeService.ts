@@ -33,13 +33,19 @@ export interface OrderBookLevel {
  */
 export class MarketDataService {
   private exchange: Exchange;
+  private marketsLoaded: Promise<void>;
 
   constructor(enableRateLimit = true, apiKey?: string, apiSecret?: string) {
     this.exchange = new ccxt.binance({
       enableRateLimit,
-      options: { defaultType: "spot" },
+      timeout: 30000,
+      options: {
+        defaultType: "spot",
+        fetchMarkets: ["spot"],
+      },
       ...(apiKey && apiSecret ? { apiKey, secret: apiSecret } : {}),
     } as any);
+    this.marketsLoaded = this.exchange.loadMarkets().catch(() => {});
   }
 
   hasCredentials(): boolean {

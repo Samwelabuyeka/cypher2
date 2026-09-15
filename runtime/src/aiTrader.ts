@@ -1,5 +1,4 @@
 import { getDb } from "./db";
-import { getExchangeForUser, placeOrder, getAllUserBalances } from "./exchangeManager";
 import { fetchTenYearsDaily, candlesToMarketData } from "./dataEngine";
 import {
   precomputeAllStrategySignals,
@@ -117,6 +116,7 @@ export async function executeDecisions(userId: string, decisions: TradingDecisio
   const keys = db.prepare("SELECT DISTINCT exchange FROM api_keys WHERE userId = ?").all(userId) as any[];
   if (keys.length === 0) return results;
   const exchangeName = keys[0].exchange;
+  const { placeOrder } = await import("./exchangeManager");
 
   for (const d of decisions) {
     try {

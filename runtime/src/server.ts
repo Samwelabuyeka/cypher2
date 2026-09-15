@@ -113,12 +113,23 @@ app.get("/api/tickers", async (_req, res) => {
         market.fetchTicker(s).catch(() => null)
       )
     );
-    res.json({
-      ok: true,
-      source: "live-binance",
-      count: tickers.filter(Boolean).length,
-      data: tickers.filter(Boolean),
-    });
+    const live = tickers.filter(Boolean);
+    if (live.length > 0) {
+      return res.json({ ok: true, source: "live-binance", count: live.length, data: live });
+    }
+    // Fallback: use portfolio scan data
+    const fallback = await Promise.all(
+      TOP_50_SYMBOLS.slice(0, 20).map(async (s) => {
+        try {
+          const candles = await market.fetchOHLCV(s, "1d", 2);
+          if (candles.length === 0) return null;
+          const last = candles[candles.length - 1];
+          return { symbol: `${s}/USDT`, bid: last.close, ask: last.close, last: last.close, baseVolume: last.volume, quoteVolume: last.volume * last.close, timestamp: last.timestamp };
+        } catch { return null; }
+      })
+    );
+    const fb = fallback.filter(Boolean);
+    res.json({ ok: true, source: fb.length > 0 ? "cached-ohlcv" : "empty", count: fb.length, data: fb });
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -228,7 +239,10 @@ wss.on("connection", (ws) => {
     try {
       const ticker = await market.fetchTicker("BTC");
       ws.send(JSON.stringify({ type: "ticker", data: ticker }));
-    } catch {}
+    } catch {
+      // Binance unreachable — send a heartbeat
+      ws.send(JSON.stringify({ type: "heartbeat", timestamp: Date.now() }));
+    }
   }, 5000);
   ws.on("close", () => clearInterval(interval));
 });
